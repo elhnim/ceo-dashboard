@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 
 import { AuthSessionProvider } from "@/components/auth/session-provider"
 import { RootShell } from "@/components/layout/root-shell"
@@ -11,6 +11,16 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "CEO Dashboard",
   description: "Personal executive function support tool for daily focus.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CEO Dashboard",
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#6366f1",
 }
 
 export default async function RootLayout({

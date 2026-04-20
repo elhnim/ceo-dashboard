@@ -4,8 +4,14 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { PencilIcon, Trash2Icon } from "lucide-react"
 
-import type { Business, BusinessUpdate } from "@/types/database"
+import type {
+  Business,
+  BusinessUpdate,
+  BusinessVMV,
+  BusinessVMVHistory,
+} from "@/types/database"
 import { BusinessForm } from "@/components/businesses/BusinessForm"
+import { BusinessVMVPanel } from "@/components/businesses/BusinessVMVPanel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,6 +31,9 @@ import {
 
 type BusinessDetailProps = {
   business: Business
+  initialVMV: BusinessVMV | null
+  initialVMVHistory: BusinessVMVHistory[]
+  vmvUnavailableMessage?: string | null
 }
 
 async function updateBusinessRequest(id: string, payload: BusinessUpdate) {
@@ -63,7 +72,12 @@ async function deleteBusinessRequest(id: string) {
   }
 }
 
-export function BusinessDetail({ business }: BusinessDetailProps) {
+export function BusinessDetail({
+  business,
+  initialVMV,
+  initialVMVHistory,
+  vmvUnavailableMessage = null,
+}: BusinessDetailProps) {
   const router = useRouter()
   const [currentBusiness, setCurrentBusiness] = useState(business)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -72,7 +86,10 @@ export function BusinessDetail({ business }: BusinessDetailProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
   async function handleUpdateBusiness(payload: BusinessUpdate) {
-    const updatedBusiness = await updateBusinessRequest(currentBusiness.id, payload)
+    const updatedBusiness = await updateBusinessRequest(
+      currentBusiness.id,
+      payload
+    )
     setCurrentBusiness(updatedBusiness)
     setIsEditDialogOpen(false)
     router.refresh()
@@ -121,7 +138,11 @@ export function BusinessDetail({ business }: BusinessDetailProps) {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" size="lg" onClick={() => setIsEditDialogOpen(true)}>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setIsEditDialogOpen(true)}
+            >
               <PencilIcon />
               Edit
             </Button>
@@ -177,15 +198,12 @@ export function BusinessDetail({ business }: BusinessDetailProps) {
         </TabsContent>
 
         <TabsContent value="vmv">
-          <Card className="border-border/70 shadow-sm">
-            <CardHeader>
-              <CardTitle>Vision, Mission, Values</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm leading-6 text-muted-foreground">
-              Coming soon. This tab will hold the evolving strategic identity for
-              this business.
-            </CardContent>
-          </Card>
+          <BusinessVMVPanel
+            businessId={currentBusiness.id}
+            initialVMV={initialVMV}
+            initialHistory={initialVMVHistory}
+            unavailableMessage={vmvUnavailableMessage}
+          />
         </TabsContent>
 
         <TabsContent value="okrs">

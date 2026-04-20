@@ -74,6 +74,10 @@ function getStatusFromMessage(message: string) {
     return 400
   }
 
+  if (message.includes("Supabase can’t read the CEO Dashboard tables yet.")) {
+    return 503
+  }
+
   return 500
 }
 

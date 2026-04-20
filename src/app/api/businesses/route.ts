@@ -1,5 +1,9 @@
 import type { BusinessInsert } from "@/types/database"
-import { createBusiness, getBusinesses } from "@/lib/services/businesses"
+import {
+  BusinessSchemaError,
+  createBusiness,
+  getBusinesses,
+} from "@/lib/services/businesses"
 
 function parseBusinessInsert(value: unknown): BusinessInsert {
   if (!value || typeof value !== "object") {
@@ -32,12 +36,14 @@ export async function GET() {
       error: null,
     })
   } catch (error) {
+    const status = error instanceof BusinessSchemaError ? 503 : 500
+
     return Response.json(
       {
         data: null,
         error: error instanceof Error ? error.message : "Unable to load businesses",
       },
-      { status: 500 }
+      { status }
     )
   }
 }
@@ -57,7 +63,12 @@ export async function POST(request: Request) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to create business"
-    const status = message === "Business name is required" ? 400 : 500
+    const status =
+      message === "Business name is required"
+        ? 400
+        : error instanceof BusinessSchemaError
+          ? 503
+          : 500
 
     return Response.json(
       {

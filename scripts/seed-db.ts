@@ -64,7 +64,8 @@ async function verifyTables() {
     requiredTables.map(async (tableName) => {
       const { error } = await supabase
         .from(tableName)
-        .select("*", { head: true, count: "exact" })
+        .select("id")
+        .limit(1)
 
       return {
         tableName,

@@ -3,6 +3,27 @@ import "server-only"
 import { createClient } from "@/lib/supabase/server"
 import type { Business, BusinessInsert, BusinessUpdate } from "@/types/database"
 
+export class BusinessSchemaError extends Error {
+  constructor(message = "Business schema is not available in Supabase yet.") {
+    super(message)
+    this.name = "BusinessSchemaError"
+  }
+}
+
+function isSchemaCacheError(message: string) {
+  return message.includes("schema cache")
+}
+
+function formatBusinessError(message: string) {
+  if (isSchemaCacheError(message)) {
+    return new BusinessSchemaError(
+      "Supabase can’t read the CEO Dashboard tables yet. Re-run the database schema in Supabase SQL Editor or refresh the project API schema cache, then try again."
+    )
+  }
+
+  return new Error(message)
+}
+
 function normalizeBusinessInsert(
   data: BusinessInsert,
   displayOrder: number
@@ -51,7 +72,7 @@ export async function getBusinesses(): Promise<Business[]> {
   const { data, error } = await getBusinessesQuery()
 
   if (error) {
-    throw new Error(error.message)
+    throw formatBusinessError(error.message)
   }
 
   return data satisfies Business[]
@@ -65,7 +86,11 @@ export async function getBusiness(id: string): Promise<Business> {
     .eq("id", id)
     .single()
 
-  if (error || !data) {
+  if (error) {
+    throw formatBusinessError(error.message)
+  }
+
+  if (!data) {
     throw new Error("Business not found")
   }
 
@@ -84,8 +109,12 @@ export async function createBusiness(data: BusinessInsert): Promise<Business> {
     .select("*")
     .single()
 
-  if (error || !createdBusiness) {
-    throw new Error(error?.message || "Unable to create business")
+  if (error) {
+    throw formatBusinessError(error.message)
+  }
+
+  if (!createdBusiness) {
+    throw new Error("Unable to create business")
   }
 
   return createdBusiness satisfies Business
@@ -105,8 +134,12 @@ export async function updateBusiness(
     .select("*")
     .single()
 
-  if (error || !updatedBusiness) {
-    throw new Error(error?.message || "Unable to update business")
+  if (error) {
+    throw formatBusinessError(error.message)
+  }
+
+  if (!updatedBusiness) {
+    throw new Error("Unable to update business")
   }
 
   return updatedBusiness satisfies Business
@@ -120,7 +153,7 @@ export async function deleteBusiness(id: string): Promise<void> {
     .eq("id", id)
 
   if (error) {
-    throw new Error(error.message)
+    throw formatBusinessError(error.message)
   }
 }
 
@@ -134,7 +167,7 @@ export async function reorderBusinesses(ids: string[]): Promise<void> {
       .eq("id", id)
 
     if (error) {
-      throw new Error(error.message)
+      throw formatBusinessError(error.message)
     }
   }
 }

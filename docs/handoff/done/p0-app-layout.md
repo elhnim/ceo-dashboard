@@ -1,7 +1,7 @@
 # Task: Build App Shell Layout and Navigation
 
 ## Status
-backlog
+done
 
 ## Priority
 P0 (blocking)
@@ -92,4 +92,9 @@ Each placeholder should show the page title and a message like "This feature is 
 - The sidebar navigation items for Tasks, Calendar, Email are placeholders — they'll be implemented later
 
 ## Notes (filled by Codex on completion)
-_Implementation notes, decisions made, anything to review._
+- All layout components created: app-sidebar, app-header, app-layout, coming-soon-page
+- Root layout updated with SidebarProvider, TooltipProvider, Toaster
+- All 5 placeholder pages created with phase-appropriate messaging
+- Responsive sidebar with collapsible icon mode and rail
+- Dynamic page titles in header based on current route
+- Build passes cleanly (verified 2026-04-20)

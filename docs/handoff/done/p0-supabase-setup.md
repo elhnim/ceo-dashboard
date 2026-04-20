@@ -1,7 +1,7 @@
 # Task: Set Up Supabase Client + Run Database Schema
 
 ## Status
-backlog
+done
 
 ## Priority
 P0 (blocking)
@@ -87,13 +87,13 @@ Create a seed script at `scripts/seed-db.ts` that can be run to apply the schema
 ```
 
 ## Acceptance Criteria
-- [ ] `@supabase/supabase-js` and `@supabase/ssr` installed
-- [ ] `src/lib/supabase/client.ts` created and exports `createClient()`
-- [ ] `src/lib/supabase/server.ts` created and exports `createClient()`
-- [ ] `src/lib/supabase/admin.ts` created and exports `createAdminClient()`
-- [ ] `src/types/database.ts` contains all type definitions from `docs/architecture/types.ts`
-- [ ] Database schema applied to Supabase (all tables exist)
-- [ ] `npm run build` passes
+- [x] `@supabase/supabase-js` and `@supabase/ssr` installed
+- [x] `src/lib/supabase/client.ts` created and exports `createClient()`
+- [x] `src/lib/supabase/server.ts` created and exports `createClient()`
+- [x] `src/lib/supabase/admin.ts` created and exports `createAdminClient()`
+- [x] `src/types/database.ts` contains all type definitions from `docs/architecture/types.ts`
+- [x] Database schema applied to Supabase (all tables exist)
+- [x] `npm run build` passes
 
 ## Relevant Files
 - `docs/architecture/database-schema.sql` — Full SQL schema
@@ -107,4 +107,11 @@ Create a seed script at `scripts/seed-db.ts` that can be run to apply the schema
 - Check Next.js docs at `node_modules/next/dist/docs/` for cookies API if unsure
 
 ## Notes (filled by Codex on completion)
-_Implementation notes, decisions made, anything to review._
+- Added `@supabase/ssr` and `@supabase/supabase-js` to the app dependencies and added a `seed:db` script to run the schema loader against a configured Supabase project.
+- Created the browser, server, and admin Supabase helpers under `src/lib/supabase/` using the Next.js 16 async `cookies()` API for the server client.
+- Copied the shared database/domain type definitions from `docs/architecture/types.ts` into `src/types/database.ts`.
+- Added `scripts/seed-db.ts`, which reads `docs/architecture/database-schema.sql`, applies it through `SUPABASE_PG_META_URL` when that admin endpoint is configured, and otherwise verifies the expected public tables through the Supabase service-role API.
+- Removed a local temporary Supabase module shim so the real package types are used instead of `unknown`.
+- Verification: `npm.cmd run lint` passed, `npm.cmd run build` passed, and `npm.cmd run seed:db` verified the six required public tables through Supabase using the configured service-role key.
+- Decision made: because the current `.env.local` does not include a direct SQL admin endpoint, the seed script treats `SUPABASE_PG_META_URL` as optional and falls back to schema verification when the database already exists.
+- What to test: if you later add `SUPABASE_PG_META_URL`, rerun `npm run seed:db` to confirm raw SQL application also works for fresh environments.

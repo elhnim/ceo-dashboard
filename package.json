@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:db": "node --env-file=.env.local --experimental-strip-types scripts/seed-db.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.4",
     "@base-ui/react": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

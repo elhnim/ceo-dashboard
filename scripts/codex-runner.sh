@@ -4,8 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-WORKSPACE_DIR="$(cd "$APP_DIR/.." && pwd)"
-DOCS_DIR="$WORKSPACE_DIR/docs"
+DOCS_DIR="$APP_DIR/docs"
 HANDOFF_DIR="$DOCS_DIR/handoff"
 BACKLOG_DIR="${CODEX_RUNNER_BACKLOG_DIR:-$HANDOFF_DIR/backlog}"
 IN_PROGRESS_DIR="${CODEX_RUNNER_IN_PROGRESS_DIR:-$HANDOFF_DIR/in-progress}"
@@ -75,10 +74,10 @@ build_codex_prompt() {
   cat <<EOF
 Use the following system prompt and task brief to do the work.
 
-System prompt from ../docs/CODEX-PROMPT.md:
+System prompt from docs/CODEX-PROMPT.md:
 $system_prompt_contents
 
-Task file from ../docs/handoff/in-progress/$task_name:
+Task file from docs/handoff/in-progress/$task_name:
 $task_contents
 
 Requirements:
@@ -87,9 +86,9 @@ Requirements:
 - Run relevant validation for the task.
 - Update the task file status to done.
 - Fill the Notes section with what you implemented, decisions made, concerns, and what to test.
-- Move the task file to ../docs/handoff/done/ when complete.
+- Move the task file to docs/handoff/done/ when complete.
 - Commit the changes with a clear message referencing the task name.
-- Do not modify ../docs/SPEC.md or ../docs/CODEX-PROMPT.md.
+- Do not modify docs/SPEC.md or docs/CODEX-PROMPT.md.
 EOF
 }
 

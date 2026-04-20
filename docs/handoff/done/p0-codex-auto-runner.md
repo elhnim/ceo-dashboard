@@ -1,7 +1,7 @@
 # Task: Build Codex Auto-Runner Script
 
 ## Status
-backlog
+done
 
 ## Priority
 P0 (blocking)
@@ -76,4 +76,8 @@ scripts/
 - The script should be idempotent — running it when the backlog is empty should do nothing
 
 ## Notes (filled by Codex on completion)
-_Implementation notes, decisions made, anything to review._
+- Completed the runner implementation in `scripts/codex-runner.sh` and `scripts/setup-scheduler.ps1`, plus the `.gitignore` exclusions for the lock file and log file.
+- Fixed the runner to read the actual repo-local docs tree at `app/docs/...` instead of incorrectly assuming a sibling `../docs` directory. The generated Codex prompt text now references the correct in-repo handoff paths.
+- The runner already handled priority ordering via filename sort, lock-file based single-instance execution, backlog/in-progress/done moves, retry notes on failure, and `TEST_MODE` support for safe smoke testing.
+- What to test outside this sandbox: run `scripts/codex-runner.sh` in Git Bash with `CODEX_RUNNER_TEST_MODE=1` and temp backlog/in-progress/done directories, then confirm a dummy task moves from backlog to done and `scripts/codex-runner.log` records the run.
+- Limitation in this environment: Git Bash execution is blocked here with a Windows permission error (`couldn't create signal pipe, Win32 error 5`), so the smoke test could not be executed end-to-end inside the sandbox.

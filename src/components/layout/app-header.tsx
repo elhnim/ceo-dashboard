@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import { ChevronDownIcon, LogOutIcon, SparklesIcon } from "lucide-react"
 
 import {
@@ -60,7 +61,6 @@ function getInitials(name: string) {
 
 export function AppHeader({ user }: AppHeaderProps) {
   const pathname = usePathname()
-  const router = useRouter()
 
   const displayName = user?.name?.trim() || "CEO"
   const subtitle = user?.email?.trim() || "Microsoft SSO pending"
@@ -113,8 +113,8 @@ export function AppHeader({ user }: AppHeaderProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => {
-                  router.push("/login")
+                onClick={async () => {
+                  await signOut({ callbackUrl: "/login" })
                 }}
               >
                 <LogOutIcon />

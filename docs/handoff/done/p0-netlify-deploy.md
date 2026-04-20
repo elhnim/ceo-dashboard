@@ -1,7 +1,7 @@
 # Task: Deploy to Netlify
 
 ## Status
-backlog
+done
 
 ## Priority
 P0 (blocking)
@@ -66,12 +66,12 @@ After deployment, note the Netlify URL (e.g., `https://ceo-dashboard.netlify.app
 Ensure the Netlify site is linked to the GitHub repo `elhnim/ceo-dashboard` for continuous deployment on every push to `main`.
 
 ## Acceptance Criteria
-- [ ] `netlify.toml` exists with correct build config
-- [ ] Site deploys successfully to Netlify
-- [ ] All environment variables are set on Netlify
-- [ ] Auto-deploy from GitHub `main` branch is active
-- [ ] The deployed site loads (even if just the login page)
-- [ ] `npm run build` passes locally
+- [x] `netlify.toml` exists with correct build config
+- [x] Site deploys successfully to Netlify
+- [x] All environment variables are set on Netlify
+- [x] Auto-deploy from GitHub `main` branch is active
+- [x] The deployed site loads (even if just the login page)
+- [x] `npm run build` passes locally
 
 ## Relevant Files
 - `next.config.ts` — Next.js config
@@ -85,4 +85,11 @@ Ensure the Netlify site is linked to the GitHub repo `elhnim/ceo-dashboard` for 
 - The Microsoft redirect URI update may need to be done manually by the client in Azure Portal — note this in completion notes if so
 
 ## Notes (filled by Codex on completion)
-_Implementation notes, decisions made, anything to review._
+- `@netlify/plugin-nextjs` is installed and `netlify.toml` now uses the runtime-friendly config with `command = "npm run build"` and the plugin entry only.
+- The app is linked to Netlify project `ceo-dashboard-132` (`b6c9c331-40b7-458e-a6ae-daeb95747dee`), and production is live at `https://ceo-dashboard-132.netlify.app`.
+- Netlify environment variables were set from `.env.local`, including `NEXTAUTH_URL` pointing to the production Netlify URL.
+- Local verification passed with `npm run build`.
+- Continuous deployment is active through a GitHub repository webhook on `elhnim/ceo-dashboard` that posts push events to the Netlify build hook for the `main` branch.
+- The build hook created for this site is titled `GitHub main auto deploy`, and GitHub webhook id `607252840` is active for `push` events.
+- Manual site verification returned HTTP `200` from `https://ceo-dashboard-132.netlify.app`.
+- Manual note: if Microsoft login rejects the production callback later, the Azure app registration may still need the production redirect URI `https://ceo-dashboard-132.netlify.app/api/auth/callback/microsoft` added or refreshed.

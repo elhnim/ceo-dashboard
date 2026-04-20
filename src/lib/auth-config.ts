@@ -31,6 +31,7 @@ const microsoftScope = [
 ].join(" ")
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   secret: getRequiredEnv("NEXTAUTH_SECRET"),
   pages: {
     signIn: "/login",

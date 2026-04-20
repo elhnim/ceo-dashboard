@@ -1,20 +1,14 @@
 import NextAuth from "next-auth"
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
 
-function getRequiredEnv(
+function getEnv(
   name:
     | "MICROSOFT_CLIENT_ID"
     | "MICROSOFT_CLIENT_SECRET"
     | "MICROSOFT_TENANT_ID"
     | "NEXTAUTH_SECRET",
 ) {
-  const value = process.env[name]
-
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`)
-  }
-
-  return value
+  return process.env[name] ?? ""
 }
 
 const microsoftScope = [
@@ -32,7 +26,7 @@ const microsoftScope = [
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
-  secret: getRequiredEnv("NEXTAUTH_SECRET"),
+  secret: getEnv("NEXTAUTH_SECRET"),
   pages: {
     signIn: "/login",
   },
@@ -41,9 +35,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   providers: [
     MicrosoftEntraID({
-      clientId: getRequiredEnv("MICROSOFT_CLIENT_ID"),
-      clientSecret: getRequiredEnv("MICROSOFT_CLIENT_SECRET"),
-      issuer: `https://login.microsoftonline.com/${getRequiredEnv("MICROSOFT_TENANT_ID")}/v2.0`,
+      clientId: getEnv("MICROSOFT_CLIENT_ID"),
+      clientSecret: getEnv("MICROSOFT_CLIENT_SECRET"),
+      issuer: `https://login.microsoftonline.com/${getEnv("MICROSOFT_TENANT_ID")}/v2.0`,
       authorization: {
         params: {
           scope: microsoftScope,

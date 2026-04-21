@@ -8,6 +8,7 @@ import {
   CheckSquareIcon,
   HomeIcon,
   MailIcon,
+  SettingsIcon,
   TargetIcon,
 } from "lucide-react"
 
@@ -31,6 +32,10 @@ const navigationItems = [
   { href: "/tasks", label: "Tasks", icon: CheckSquareIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/email", label: "Email", icon: MailIcon },
+] as const
+
+const utilityItems = [
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const
 
 function isActiveRoute(pathname: string, href: string) {
@@ -79,8 +84,24 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="px-3 pb-4 pt-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-        Phase 0 shell with placeholder modules for future releases.
+      <SidebarFooter className="px-3 pb-4 pt-2">
+        <SidebarMenu>
+          {utilityItems.map(({ href, label, icon: Icon }) => (
+            <SidebarMenuItem key={href}>
+              <SidebarMenuButton
+                isActive={isActiveRoute(pathname, href)}
+                render={<Link href={href} />}
+                tooltip={label}
+              >
+                <Icon />
+                <span>{label}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+        <p className="mt-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+          Centralised app configuration for every module.
+        </p>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

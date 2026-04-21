@@ -1,12 +1,16 @@
+export type CalendarProviderName = "outlook" | "icloud"
+
+export type CalendarType = "work" | "personal"
+
 export interface CalendarEvent {
   id: string
-  provider: "outlook" | "icloud"
+  provider: CalendarProviderName
   title: string
   startAt: Date
   endAt: Date
   attendees: string[]
   location: string | null
-  calendarType: "work" | "personal"
+  calendarType: CalendarType
   isAllDay: boolean
 }
 
@@ -24,6 +28,7 @@ export interface Email {
   externalId: string
   subject: string
   sender: string
+  senderEmail: string
   receivedAt: string
   isUrgent: boolean
   isFlagged: boolean

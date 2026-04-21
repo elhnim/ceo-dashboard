@@ -23,24 +23,20 @@ export class MicrosoftGraphError extends Error {
 function normalizeEmail(message: Message): Email {
   return {
     id: message.id ?? "",
+    externalId: message.id ?? "",
     subject: message.subject?.trim() || "(No subject)",
-    from: {
-      emailAddress: {
-        name: message.from?.emailAddress?.name?.trim() || "Unknown sender",
-        address: message.from?.emailAddress?.address?.trim() || "",
-      },
-    },
-    receivedDateTime: message.receivedDateTime || new Date(0).toISOString(),
-    importance: message.importance || "normal",
-    isRead: message.isRead ?? false,
-    flag: {
-      flagStatus: message.flag?.flagStatus || "notFlagged",
-    },
+    sender: message.from?.emailAddress?.name?.trim() || "Unknown sender",
+    senderEmail: message.from?.emailAddress?.address?.trim() || "",
+    receivedAt: message.receivedDateTime || new Date(0).toISOString(),
+    isUrgent: message.importance === "high",
+    isFlagged: message.flag?.flagStatus === "flagged",
     bodyPreview: message.bodyPreview?.trim() || "",
+    actionTaken: null,
+    syncedAt: new Date().toISOString(),
   }
 }
 
-function toMicrosoftGraphError(error: unknown): MicrosoftGraphError {
+export function toMicrosoftGraphError(error: unknown): MicrosoftGraphError {
   if (error instanceof MicrosoftGraphError) {
     return error
   }
@@ -162,6 +158,79 @@ export async function createReply(
     }
 
     return reply.id
+  } catch (error) {
+    throw toMicrosoftGraphError(error)
+  }
+}
+
+interface GraphCalendarEvent {
+  id?: string
+  subject?: string
+  start?: { dateTime?: string }
+  end?: { dateTime?: string }
+  attendees?: Array<{ emailAddress?: { name?: string; address?: string } }>
+  location?: { displayName?: string }
+  isAllDay?: boolean
+  bodyPreview?: string
+}
+
+export async function getCalendarViewEvents(
+  accessToken: string,
+  from: Date,
+  to: Date,
+): Promise<GraphCalendarEvent[]> {
+  try {
+    const client = getGraphClient(accessToken)
+    const response = await client
+      .api("/me/calendarView")
+      .query({
+        startDateTime: from.toISOString(),
+        endDateTime: to.toISOString(),
+        $select:
+          "id,subject,start,end,attendees,location,isAllDay,bodyPreview",
+        $orderby: "start/dateTime asc",
+        $top: 100,
+      })
+      .get()
+    return response.value ?? []
+  } catch (error) {
+    throw toMicrosoftGraphError(error)
+  }
+}
+
+export interface TeamChannel {
+  teamId: string
+  teamName: string
+  channelId: string
+  channelName: string
+}
+
+export async function getJoinedTeamChannels(
+  accessToken: string,
+): Promise<TeamChannel[]> {
+  try {
+    const client = getGraphClient(accessToken)
+    const teamsResponse = await client.api("/me/joinedTeams").get()
+    const teams: Array<{ id: string; displayName: string }> =
+      teamsResponse.value ?? []
+
+    const channelArrays = await Promise.all(
+      teams.map(async (team) => {
+        const channelsResponse = await client
+          .api(`/teams/${team.id}/channels`)
+          .get()
+        const channels: Array<{ id: string; displayName: string }> =
+          channelsResponse.value ?? []
+        return channels.map((ch) => ({
+          teamId: team.id,
+          teamName: team.displayName,
+          channelId: ch.id,
+          channelName: ch.displayName,
+        }))
+      }),
+    )
+
+    return channelArrays.flat()
   } catch (error) {
     throw toMicrosoftGraphError(error)
   }

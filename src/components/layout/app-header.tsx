@@ -36,6 +36,7 @@ const routeTitles: Record<string, string> = {
   "/tasks": "Tasks",
   "/calendar": "Calendar",
   "/email": "Email",
+  "/settings": "Settings",
 }
 
 function getPageTitle(pathname: string) {

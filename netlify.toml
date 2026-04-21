@@ -3,3 +3,10 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions]
+  directory = "netlify/functions"
+
+[[functions]]
+  name = "ea-briefing-pipeline"
+  schedule = "30 6 * * *"

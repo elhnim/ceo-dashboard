@@ -175,6 +175,77 @@ export interface DailyPrioritiesUpsert {
 }
 
 // ============================================
+// EMAIL CACHE
+// ============================================
+
+export type EmailAction =
+  | "archive"
+  | "reply_later"
+  | "delegate"
+  | "done";
+
+export interface EmailCache {
+  id: string;
+  external_id: string;
+  subject: string;
+  sender: string;
+  sender_email: string;
+  received_at: string;
+  is_urgent: boolean;
+  is_flagged: boolean;
+  body_preview: string | null;
+  action_taken: EmailAction | null;
+  synced_at: string;
+}
+
+export interface EmailCacheInsert {
+  external_id: string;
+  subject: string;
+  sender: string;
+  sender_email: string;
+  received_at: string;
+  is_urgent: boolean;
+  is_flagged: boolean;
+  body_preview?: string | null;
+  action_taken?: EmailAction | null;
+  synced_at: string;
+}
+
+export interface EmailCacheUpdate {
+  action_taken?: EmailAction | null;
+}
+
+// ============================================
+// TASK CACHE
+// ============================================
+
+export type TaskImportance = "low" | "normal" | "high";
+export type TaskStatus =
+  | "notStarted"
+  | "inProgress"
+  | "completed"
+  | "waitingOnOthers"
+  | "deferred";
+export type TaskQuadrant = "do" | "schedule" | "delegate" | "eliminate";
+
+export interface TaskCache {
+  id: string;
+  external_id: string;
+  title: string;
+  due_date: string | null;
+  importance: TaskImportance;
+  status: TaskStatus;
+  quadrant: TaskQuadrant | null;
+  body_preview: string | null;
+  synced_at: string;
+}
+
+export interface TaskCacheUpdate {
+  quadrant?: TaskQuadrant | null;
+  status?: TaskStatus;
+}
+
+// ============================================
 // API RESPONSE TYPES
 // ============================================
 

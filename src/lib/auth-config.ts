@@ -20,6 +20,8 @@ const microsoftScope = [
   "Mail.ReadWrite",
   "Calendars.ReadWrite",
   "Tasks.ReadWrite",
+  "Team.ReadBasic.All",
+  "Channel.ReadBasic.All",
   "Chat.ReadWrite",
   "ChannelMessage.ReadWrite",
 ].join(" ")

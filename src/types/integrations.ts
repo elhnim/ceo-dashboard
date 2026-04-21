@@ -1,3 +1,9 @@
+import type {
+  TaskImportance,
+  TaskQuadrant,
+  TaskStatus,
+} from "@/types/database"
+
 export type CalendarProviderName = "outlook" | "icloud"
 
 export type CalendarType = "work" | "personal"
@@ -8,63 +14,6 @@ export type EmailAction =
   | "reply-later"
   | "delegate"
   | "five-min"
-
-export interface Email {
-  id: string
-  externalId: string
-  subject: string
-  sender: string
-  senderEmail: string
-  receivedAt: string
-  isUrgent: boolean
-  isFlagged: boolean
-  bodyPreview: string
-  actionTaken?: EmailAction | null
-  syncedAt?: string | null
-}
-
-export interface EmailProvider {
-  getUrgentEmails(since: Date): Promise<Email[]>
-}
-
-export interface Task {
-  id: string
-  externalId: string
-  title: string
-  dueDate: string | null
-  importance: "low" | "normal" | "high"
-  status: string
-}
-
-export interface TaskProvider {
-  getTasks(): Promise<Task[]>
-}
-
-export interface TeamsMention {
-  id: string
-  channelName: string | null
-  chatType: "chat" | "channel"
-  messagePreview: string
-  actionRequired: boolean
-  receivedAt: string
-}
-
-export interface ChannelSummary {
-  channelId: string | null
-  channelName: string
-  teamName: string | null
-  issues: string[]
-  decisions: string[]
-  period: {
-    from: string
-    to: string
-  }
-}
-
-export interface TeamsProvider {
-  getMentions(since: Date): Promise<TeamsMention[]>
-  getChannelSummaries(channelIds: string[], since: Date): Promise<ChannelSummary[]>
-}
 
 export interface CalendarEvent {
   id: string
@@ -78,21 +27,15 @@ export interface CalendarEvent {
   isAllDay: boolean
 }
 
-export interface CalendarProvider {
-  getEvents(from: Date, to: Date): Promise<CalendarEvent[]>
-}
-
 export interface Task {
   id: string
   externalId: string
   title: string
   dueDate: string | null
-  importance: "low" | "normal" | "high"
-  status: "notStarted" | "inProgress" | "completed"
-}
-
-export interface TaskProvider {
-  getTasks(): Promise<Task[]>
+  importance: TaskImportance
+  status: TaskStatus
+  bodyPreview?: string | null
+  quadrant?: TaskQuadrant | null
 }
 
 export interface Email {
@@ -100,15 +43,13 @@ export interface Email {
   externalId: string
   subject: string
   sender: string
-  senderEmail?: string
+  senderEmail: string
   receivedAt: string
   isUrgent: boolean
   isFlagged: boolean
   bodyPreview: string
-}
-
-export interface EmailProvider {
-  getUrgentEmails(since: Date): Promise<Email[]>
+  actionTaken?: EmailAction | null
+  syncedAt?: string | null
 }
 
 export interface TeamsMention {
@@ -127,6 +68,19 @@ export interface ChannelSummary {
   issues: string[]
   decisions: string[]
   period: { from: string; to: string }
+}
+
+export interface CalendarProvider {
+  getEvents(from: Date, to: Date): Promise<CalendarEvent[]>
+}
+
+export interface TaskProvider {
+  getTasks(): Promise<Task[]>
+  updateTaskStatus?(taskId: string, status: TaskStatus): Promise<void>
+}
+
+export interface EmailProvider {
+  getUrgentEmails(since: Date): Promise<Email[]>
 }
 
 export interface TeamsProvider {

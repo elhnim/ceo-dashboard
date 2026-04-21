@@ -51,9 +51,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
         token.expiresAt = account.expires_at
+        return token
       }
 
-      return token
+      // Token still valid (60s buffer before expiry)
+      if (
+        typeof token.expiresAt === "number" &&
+        Date.now() < token.expiresAt * 1000 - 60_000
+      ) {
+        return token
+      }
+
+      // Token expired — refresh it
+      try {
+        const response = await fetch(
+          `https://login.microsoftonline.com/${getEnv("MICROSOFT_TENANT_ID")}/oauth2/v2.0/token`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              grant_type: "refresh_token",
+              client_id: getEnv("MICROSOFT_CLIENT_ID"),
+              client_secret: getEnv("MICROSOFT_CLIENT_SECRET"),
+              refresh_token: String(token.refreshToken ?? ""),
+              scope: microsoftScope,
+            }),
+          },
+        )
+
+        const tokens = await response.json()
+        if (!response.ok) throw tokens
+
+        return {
+          ...token,
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token ?? token.refreshToken,
+          expiresAt: Math.floor(Date.now() / 1000 + tokens.expires_in),
+        }
+      } catch (error) {
+        console.error("Failed to refresh Microsoft access token:", error)
+        return { ...token, error: "RefreshAccessTokenError" }
+      }
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken

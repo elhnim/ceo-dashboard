@@ -97,6 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.accessToken = token.accessToken
       session.refreshToken = token.refreshToken
       session.expiresAt = token.expiresAt
+      session.error = token.error
 
       return session
     },

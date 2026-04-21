@@ -11,7 +11,7 @@ export async function getSession() {
 export async function requireAuth() {
   const session = await getSession()
 
-  if (!session) {
+  if (!session || session.error === "RefreshAccessTokenError") {
     redirect("/login")
   }
 

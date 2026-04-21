@@ -175,6 +175,49 @@ export interface DailyPrioritiesUpsert {
 }
 
 // ============================================
+// EMAIL CACHE
+// ============================================
+
+export type EmailCacheAction =
+  | "reply_later"
+  | "delegate"
+  | "archive"
+  | "done"
+  | null;
+
+export interface EmailCache {
+  id: string;
+  external_id: string;
+  subject: string;
+  sender: string;
+  sender_email: string;
+  received_at: string;
+  is_urgent: boolean;
+  is_flagged: boolean;
+  body_preview: string | null;
+  action_taken: EmailCacheAction;
+  synced_at: string;
+}
+
+export interface EmailCacheInsert {
+  external_id: string;
+  subject: string;
+  sender: string;
+  sender_email: string;
+  received_at: string;
+  is_urgent?: boolean;
+  is_flagged?: boolean;
+  body_preview?: string | null;
+  action_taken?: EmailCacheAction;
+  synced_at?: string;
+}
+
+export interface EmailCacheUpdate {
+  action_taken?: EmailCacheAction;
+  synced_at?: string;
+}
+
+// ============================================
 // API RESPONSE TYPES
 // ============================================
 

@@ -66,11 +66,20 @@ export function useEmails({ initialEmails = [] }: UseEmailsOptions = {}) {
   )
 
   useEffect(() => {
+    setEmails(initialEmails)
+
+    if (initialEmails.length > 0) {
+      setIsLoading(false)
+    }
+  }, [initialEmails])
+
+  useEffect(() => {
     if (initialEmails.length > 0) {
       return
     }
 
     let isCancelled = false
+    setIsLoading(true)
 
     void fetchEmailsRequest()
       .then((nextEmails) => {

@@ -1,5 +1,3 @@
-import type { Session } from "next-auth"
-
 import type { EmailAction } from "@/types/email"
 import { requireAuth } from "@/lib/auth"
 import { applyEmailAction } from "@/lib/services/email-actions"
@@ -15,8 +13,8 @@ type RouteContext = {
   }>
 }
 
-function getAccessToken(session: Session | null) {
-  if (!session?.accessToken) {
+function getAccessToken(session: Awaited<ReturnType<typeof requireAuth>>) {
+  if (!session.accessToken) {
     throw new Error("Microsoft access token is not available")
   }
 
@@ -39,7 +37,7 @@ function parseAction(value: unknown): EmailAction {
     throw new Error("Invalid email action")
   }
 
-  return action as EmailAction
+  return action
 }
 
 export async function POST(request: Request, context: RouteContext) {

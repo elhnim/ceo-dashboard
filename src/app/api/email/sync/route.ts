@@ -1,12 +1,10 @@
-import type { Session } from "next-auth"
-
 import { requireAuth } from "@/lib/auth"
 import { EmailCacheSchemaError } from "@/lib/services/email-cache"
 import { MicrosoftGraphError } from "@/lib/services/microsoft-graph"
 import { syncEmails } from "@/lib/services/email-sync"
 
-function getAccessToken(session: Session | null) {
-  if (!session?.accessToken) {
+function getAccessToken(session: Awaited<ReturnType<typeof requireAuth>>) {
+  if (!session.accessToken) {
     throw new Error("Microsoft access token is not available")
   }
 

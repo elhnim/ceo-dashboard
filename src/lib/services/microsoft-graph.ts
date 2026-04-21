@@ -1,22 +1,13 @@
 import "server-only"
 
 import { Client, GraphError } from "@microsoft/microsoft-graph-client"
-import type { Event as GraphEvent } from "@microsoft/microsoft-graph-types"
-import type { Channel, Team } from "@microsoft/microsoft-graph-types"
+import type { Message } from "@microsoft/microsoft-graph-types"
 
-type GraphTeamsResponse = {
-  value?: Team[]
-}
+import { auth } from "@/lib/auth-config"
+import type { Email } from "@/types/email"
 
-type GraphChannelsResponse = {
-  value?: Channel[]
-}
-
-export type TeamsChannel = {
-  teamId: string
-  teamName: string
-  channelId: string
-  channelName: string
+type GraphMessagesResponse = {
+  value?: Message[]
 }
 
 export class MicrosoftGraphError extends Error {
@@ -29,7 +20,27 @@ export class MicrosoftGraphError extends Error {
   }
 }
 
-export function toMicrosoftGraphError(error: unknown): MicrosoftGraphError {
+function normalizeEmail(message: Message): Email {
+  return {
+    id: message.id ?? "",
+    subject: message.subject?.trim() || "(No subject)",
+    from: {
+      emailAddress: {
+        name: message.from?.emailAddress?.name?.trim() || "Unknown sender",
+        address: message.from?.emailAddress?.address?.trim() || "",
+      },
+    },
+    receivedDateTime: message.receivedDateTime || new Date(0).toISOString(),
+    importance: message.importance || "normal",
+    isRead: message.isRead ?? false,
+    flag: {
+      flagStatus: message.flag?.flagStatus || "notFlagged",
+    },
+    bodyPreview: message.bodyPreview?.trim() || "",
+  }
+}
+
+function toMicrosoftGraphError(error: unknown): MicrosoftGraphError {
   if (error instanceof MicrosoftGraphError) {
     return error
   }
@@ -55,19 +66,56 @@ export function getGraphClient(accessToken: string): Client {
   })
 }
 
-export async function archiveEmail(accessToken: string, emailId: string) {
+export async function getSessionToken(req: Request): Promise<string> {
+  void req
+  const session = await auth()
+
+  if (!session?.accessToken) {
+    throw new Error("Microsoft access token is not available")
+  }
+
+  if (session.error === "RefreshAccessTokenError") {
+    throw new Error("Microsoft access token could not be refreshed")
+  }
+
+  if (
+    typeof session.expiresAt === "number" &&
+    Date.now() >= session.expiresAt * 1000
+  ) {
+    throw new Error("Microsoft access token has expired")
+  }
+
+  return session.accessToken
+}
+
+export async function getUrgentEmails(accessToken: string): Promise<Email[]> {
   try {
-    await getGraphClient(accessToken).api(`/me/messages/${emailId}/move`).post({
-      destinationId: "archive",
-    })
+    const result = (await getGraphClient(accessToken)
+      .api("/me/messages")
+      .filter("importance eq 'high' or flag/flagStatus eq 'flagged'")
+      .select([
+        "id",
+        "subject",
+        "from",
+        "receivedDateTime",
+        "importance",
+        "isRead",
+        "flag",
+        "bodyPreview",
+      ])
+      .orderby("receivedDateTime desc")
+      .top(50)
+      .get()) as GraphMessagesResponse
+
+    return (result.value || []).map(normalizeEmail)
   } catch (error) {
     throw toMicrosoftGraphError(error)
   }
 }
 
-export async function markAsRead(accessToken: string, emailId: string) {
+export async function markAsRead(accessToken: string, id: string): Promise<void> {
   try {
-    await getGraphClient(accessToken).api(`/me/messages/${emailId}`).patch({
+    await getGraphClient(accessToken).api(`/me/messages/${id}`).update({
       isRead: true,
     })
   } catch (error) {
@@ -75,78 +123,45 @@ export async function markAsRead(accessToken: string, emailId: string) {
   }
 }
 
-export async function flagEmail(accessToken: string, emailId: string) {
+export async function archiveEmail(accessToken: string, id: string): Promise<void> {
   try {
-    await getGraphClient(accessToken).api(`/me/messages/${emailId}`).patch({
-      flag: { flagStatus: "flagged" },
+    await getGraphClient(accessToken).api(`/me/messages/${id}/move`).post({
+      destinationId: "archive",
     })
   } catch (error) {
     throw toMicrosoftGraphError(error)
   }
 }
 
-interface GraphCalendarResponse {
-  value?: GraphEvent[]
-}
-
-export async function getCalendarViewEvents(
-  accessToken: string,
-  from: Date,
-  to: Date
-): Promise<GraphEvent[]> {
+export async function flagEmail(accessToken: string, id: string): Promise<void> {
   try {
-    const response = (await getGraphClient(accessToken)
-      .api("/me/calendarView")
-      .query({
-        startDateTime: from.toISOString(),
-        endDateTime: to.toISOString(),
-      })
-      .select("id,subject,start,end,attendees,location,isAllDay")
-      .orderby("start/dateTime")
-      .top(250)
-      .get()) as GraphCalendarResponse
-
-    return response.value ?? []
+    await getGraphClient(accessToken).api(`/me/messages/${id}`).update({
+      flag: {
+        flagStatus: "flagged",
+      },
+    })
   } catch (error) {
     throw toMicrosoftGraphError(error)
   }
 }
 
-export async function getJoinedTeamChannels(
-  accessToken: string
-): Promise<TeamsChannel[]> {
+export async function createReply(
+  accessToken: string,
+  id: string,
+): Promise<string> {
   try {
-    const client = getGraphClient(accessToken)
-    const teamsResponse = (await client
-      .api("/me/joinedTeams")
-      .select(["id", "displayName"])
-      .top(100)
-      .get()) as GraphTeamsResponse
+    const reply = (await getGraphClient(accessToken)
+      .api(`/me/messages/${id}/createReply`)
+      .post(null)) as Message
 
-    const channelsByTeam = await Promise.all(
-      (teamsResponse.value ?? []).map(async (team) => {
-        if (!team.id) {
-          return []
-        }
+    if (!reply.id) {
+      throw new MicrosoftGraphError(
+        "Microsoft Graph did not return a reply draft ID.",
+        502,
+      )
+    }
 
-        const channelsResponse = (await client
-          .api(`/teams/${team.id}/channels`)
-          .select(["id", "displayName"])
-          .top(200)
-          .get()) as GraphChannelsResponse
-
-        return (channelsResponse.value ?? [])
-          .filter((channel): channel is Channel & { id: string } => Boolean(channel.id))
-          .map((channel) => ({
-            teamId: team.id as string,
-            teamName: team.displayName?.trim() || "Untitled team",
-            channelId: channel.id,
-            channelName: channel.displayName?.trim() || "Untitled channel",
-          }))
-      })
-    )
-
-    return channelsByTeam.flat()
+    return reply.id
   } catch (error) {
     throw toMicrosoftGraphError(error)
   }

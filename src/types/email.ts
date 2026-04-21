@@ -1,15 +1,8 @@
+import type { Email as ProviderEmail } from "@/types/integrations"
+
 export type EmailAction = "reply_later" | "delegate" | "archive" | "done"
 
-export type Email = {
-  id: string
-  externalId: string
-  subject: string
-  sender: string
-  senderEmail: string
-  receivedAt: string
-  isUrgent: boolean
-  isFlagged: boolean
-  bodyPreview: string
+export type Email = ProviderEmail & {
   actionTaken: EmailAction | null
   syncedAt: string
 }

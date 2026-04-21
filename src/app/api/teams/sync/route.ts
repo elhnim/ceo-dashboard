@@ -1,11 +1,9 @@
-import type { Session } from "next-auth"
-
 import { requireAuth } from "@/lib/auth"
 import { getSettings, SettingsSchemaError } from "@/lib/services/settings"
 import { syncTeams } from "@/lib/services/teams-sync"
 
-function getSessionUserId(session: Session | null) {
-  const userId = session?.user?.email?.trim()
+function getSessionUserId(session: Awaited<ReturnType<typeof requireAuth>>) {
+  const userId = session.user?.email?.trim()
 
   if (!userId) {
     throw new Error("A session email is required to load Teams settings.")
@@ -21,7 +19,7 @@ export async function POST() {
     if (!session.accessToken) {
       return Response.json(
         { error: "Microsoft access token is not available for this session." },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -43,7 +41,7 @@ export async function POST() {
     const result = await syncTeams(
       session.accessToken,
       monitoredChannels,
-      lookbackHours
+      lookbackHours,
     )
 
     return Response.json({ synced: true, ...result })

@@ -11,20 +11,21 @@ function getEnv(
   return process.env[name] ?? ""
 }
 
-const microsoftScope = [
+const microsoftScopes = [
   "openid",
   "profile",
   "email",
   "offline_access",
   "User.Read",
+  "Calendars.Read",
+  "Tasks.Read",
+  "Mail.Read",
   "Mail.ReadWrite",
-  "Calendars.ReadWrite",
-  "Tasks.ReadWrite",
-  "Team.ReadBasic.All",
-  "Channel.ReadBasic.All",
-  "Chat.ReadWrite",
-  "ChannelMessage.ReadWrite",
-].join(" ")
+  "ChannelMessage.Read.All",
+  "Chat.Read",
+]
+
+const microsoftScope = microsoftScopes.join(" ")
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,

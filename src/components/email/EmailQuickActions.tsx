@@ -22,30 +22,10 @@ const actions: Array<{
   icon: typeof Clock3Icon
   variant: "default" | "outline"
 }> = [
-  {
-    action: "reply_later",
-    label: "Later",
-    icon: Clock3Icon,
-    variant: "outline",
-  },
-  {
-    action: "delegate",
-    label: "Delegate",
-    icon: ForwardIcon,
-    variant: "outline",
-  },
-  {
-    action: "archive",
-    label: "Archive",
-    icon: ArchiveIcon,
-    variant: "outline",
-  },
-  {
-    action: "done",
-    label: "Done",
-    icon: CheckCheckIcon,
-    variant: "default",
-  },
+  { action: "reply_later", label: "Later", icon: Clock3Icon, variant: "outline" },
+  { action: "delegate", label: "Delegate", icon: ForwardIcon, variant: "outline" },
+  { action: "archive", label: "Archive", icon: ArchiveIcon, variant: "outline" },
+  { action: "done", label: "Done", icon: CheckCheckIcon, variant: "default" },
 ]
 
 export function EmailQuickActions({

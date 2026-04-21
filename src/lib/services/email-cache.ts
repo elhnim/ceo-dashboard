@@ -36,7 +36,7 @@ function mapEmailRow(row: EmailCache): Email {
     isUrgent: row.is_urgent,
     isFlagged: row.is_flagged,
     bodyPreview: row.body_preview ?? "",
-    actionTaken: row.action_taken as EmailAction | null,
+    actionTaken: row.action_taken,
     syncedAt: row.synced_at,
   }
 }

@@ -1,5 +1,7 @@
 import "server-only"
 
+import type { Attendee } from "@microsoft/microsoft-graph-types"
+
 import { getCalendarViewEvents } from "@/lib/services/microsoft-graph"
 import type { CalendarEvent, CalendarProvider, CalendarType } from "@/types/integrations"
 
@@ -22,7 +24,7 @@ export class OutlookCalendarProvider implements CalendarProvider {
         endAt: new Date(event.end?.dateTime ?? new Date(0).toISOString()),
         attendees:
           event.attendees?.map(
-            (attendee) =>
+            (attendee: Attendee) =>
               attendee.emailAddress?.name?.trim() ||
               attendee.emailAddress?.address?.trim() ||
               "Unknown attendee"

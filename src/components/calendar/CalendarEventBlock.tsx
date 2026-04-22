@@ -11,18 +11,11 @@ interface CalendarEventBlockProps {
   onSelect: (event: CalendarEventRecord) => void
 }
 
-function formatTimeRange(event: CalendarEventRecord) {
-  if (event.isAllDay) {
-    return "All day"
-  }
-
-  return `${new Intl.DateTimeFormat("en-AU", {
+function formatTime(iso: string) {
+  return new Intl.DateTimeFormat("en-AU", {
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(event.startAt))} - ${new Intl.DateTimeFormat("en-AU", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(event.endAt))}`
+  }).format(new Date(iso))
 }
 
 export function CalendarEventBlock({
@@ -30,22 +23,26 @@ export function CalendarEventBlock({
   style,
   onSelect,
 }: CalendarEventBlockProps) {
+  const isWork = event.calendarType === "work"
+
   return (
     <button
       type="button"
       onClick={() => onSelect(event)}
       className={cn(
-        "absolute inset-x-1 overflow-hidden rounded-2xl border px-3 py-2 text-left shadow-sm transition hover:shadow-md",
-        event.calendarType === "work"
-          ? "border-primary/20 bg-primary/12 text-foreground"
-          : "border-border bg-secondary/70 text-foreground"
+        "absolute inset-x-1 overflow-hidden rounded-xl border-l-4 px-3 py-2 text-left shadow-sm transition hover:shadow-md hover:brightness-95",
+        isWork
+          ? "border-l-primary bg-primary/10 text-foreground"
+          : "border-l-violet-400 bg-violet-50 text-foreground dark:bg-violet-950/30"
       )}
       style={style}
     >
-      <p className="truncate text-sm font-medium">{event.title}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{formatTimeRange(event)}</p>
+      <p className="truncate text-sm font-semibold leading-tight">{event.title}</p>
+      <p className={cn("mt-0.5 text-xs", isWork ? "text-primary/70" : "text-violet-500")}>
+        {formatTime(event.startAt)} – {formatTime(event.endAt)}
+      </p>
       {event.location ? (
-        <p className="mt-1 truncate text-[11px] text-muted-foreground">
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
           {event.location}
         </p>
       ) : null}

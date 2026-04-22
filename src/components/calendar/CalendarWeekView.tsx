@@ -15,8 +15,10 @@ import {
 import type { CalendarEventRecord } from "@/types/calendar"
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const
-const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
-const HOUR_HEIGHT = 56
+const START_HOUR = 5
+const END_HOUR = 22
+const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => i + START_HOUR)
+const HOUR_HEIGHT = 72
 
 interface CalendarWeekViewProps {
   events: CalendarEventRecord[]
@@ -164,7 +166,7 @@ export function CalendarWeekView({
                   <div
                     key={date.toISOString()}
                     className="relative border-l border-border/70"
-                    style={{ height: HOURS.length * HOUR_HEIGHT }}
+                    style={{ height: (END_HOUR - START_HOUR + 1) * HOUR_HEIGHT }}
                   >
                     {HOURS.map((hour) => (
                       <div
@@ -174,19 +176,28 @@ export function CalendarWeekView({
                       />
                     ))}
 
-                    {todayIndex === index ? (
+                    {todayIndex === index && nowMinutes >= START_HOUR * 60 && nowMinutes <= (END_HOUR + 1) * 60 ? (
                       <div
                         className="absolute inset-x-0 z-10 h-0.5 bg-destructive"
-                        style={{ top: (nowMinutes / 60) * HOUR_HEIGHT }}
+                        style={{ top: ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT }}
                       />
                     ) : null}
 
                     {dayEvents.map((event) => {
                       const startMinutes = getMinutesSinceMidnight(event.startAt)
-                      const durationMinutes =
+                      const endMinutes =
                         (new Date(event.endAt).getTime() -
                           new Date(event.startAt).getTime()) /
-                        60_000
+                          60_000 +
+                        startMinutes
+                      const windowStart = START_HOUR * 60
+                      const windowEnd = (END_HOUR + 1) * 60
+                      const visibleStart = Math.max(startMinutes, windowStart)
+                      const visibleEnd = Math.min(endMinutes, windowEnd)
+
+                      if (visibleEnd <= windowStart || visibleStart >= windowEnd) {
+                        return null
+                      }
 
                       return (
                         <CalendarEventBlock
@@ -194,8 +205,8 @@ export function CalendarWeekView({
                           event={event}
                           onSelect={setSelectedEvent}
                           style={{
-                            top: (startMinutes / 60) * HOUR_HEIGHT,
-                            height: Math.max((durationMinutes / 60) * HOUR_HEIGHT, 36),
+                            top: ((visibleStart - windowStart) / 60) * HOUR_HEIGHT,
+                            height: Math.max(((visibleEnd - visibleStart) / 60) * HOUR_HEIGHT, 40),
                           }}
                         />
                       )

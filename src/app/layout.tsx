@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 
 import { AuthSessionProvider } from "@/components/auth/session-provider"
 import { RootShell } from "@/components/layout/root-shell"
+import { ThemeProvider } from "@/components/theme-provider"
 import { auth } from "@/lib/auth"
 import { Toaster } from "@/components/ui/sonner"
 import { SidebarProvider } from "@/components/ui/sidebar"
@@ -34,13 +35,20 @@ export default async function RootLayout({
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full bg-background text-foreground">
         <AuthSessionProvider session={session}>
-          <TooltipProvider>
-            <SidebarProvider>
-              <RootShell>{children}</RootShell>
-            </SidebarProvider>
-          </TooltipProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            disableTransitionOnChange
+            enableSystem
+          >
+            <TooltipProvider>
+              <SidebarProvider>
+                <RootShell>{children}</RootShell>
+              </SidebarProvider>
+            </TooltipProvider>
+            <Toaster position="top-right" richColors />
+          </ThemeProvider>
         </AuthSessionProvider>
-        <Toaster position="top-right" richColors />
       </body>
     </html>
   )

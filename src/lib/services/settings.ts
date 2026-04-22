@@ -1,13 +1,10 @@
 import "server-only"
 
-import { createClient } from "@/lib/supabase/server"
-import type { AppSettings } from "@/types/settings"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { createServerClient } from "@/lib/supabase/server"
+import type { AppSettings, BriefingConfig } from "@/types/settings"
 
-type SettingsConfig = Omit<AppSettings, "id" | "userId">
-
-type JsonObject = Record<string, unknown>
-
-interface SettingsRow {
+type SettingsRow = {
   id: string
   user_id: string
   calendar_config: AppSettings["calendarConfig"]
@@ -15,26 +12,35 @@ interface SettingsRow {
   email_config: AppSettings["emailConfig"]
   teams_config: AppSettings["teamsConfig"]
   okrs_config: AppSettings["okrsConfig"]
-  briefing_config: AppSettings["briefingConfig"]
+  briefing_config: BriefingConfig
   notifications_config: AppSettings["notificationsConfig"]
   rituals_config: AppSettings["ritualsConfig"]
   weekly_review_config: AppSettings["weeklyReviewConfig"]
 }
 
-export class SettingsSchemaError extends Error {
-  constructor(message = "Supabase can’t read the settings table for the dashboard yet.") {
-    super(message)
-    this.name = "SettingsSchemaError"
-  }
+type SettingsInsert = Omit<SettingsRow, "id">
+
+type AppSettingsPatch = Partial<Omit<AppSettings, "id" | "userId">>
+type SettingsQueryOptions = {
+  useAdminClient?: boolean
 }
 
-const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
+const defaultBriefingSections: BriefingConfig["sections"] = {
+  focus: { enabled: true, format: "narrative" },
+  calendar: { enabled: true, format: "structured" },
+  tasks: { enabled: true, format: "structured" },
+  email: { enabled: true, format: "structured" },
+  teams: { enabled: true, format: "structured" },
+  okrs: { enabled: true, format: "structured" },
+}
+
+const defaultSettingsValues = {
   calendarConfig: {
     accounts: [],
     includeInBrief: true,
   },
   tasksConfig: {
-    doThisNextAlgorithm: "importance_then_due_date",
+    doThisNextAlgorithm: "importance_then_due_date" as const,
     includeInBrief: true,
   },
   emailConfig: {
@@ -48,8 +54,8 @@ const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
     includeInBrief: true,
   },
   okrsConfig: {
-    cadence: "quarterly",
-    progressMethod: "manual_percentage",
+    cadence: "quarterly" as const,
+    progressMethod: "manual_percentage" as const,
     includeInBrief: true,
   },
   briefingConfig: {
@@ -57,14 +63,7 @@ const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
     timezone: "Australia/Melbourne",
     secondRunTime: null,
     model: "claude-sonnet-4-6",
-    sections: {
-      focus: { enabled: true, format: "narrative" },
-      calendar: { enabled: true, format: "structured" },
-      tasks: { enabled: true, format: "structured" },
-      email: { enabled: true, format: "structured" },
-      teams: { enabled: true, format: "structured" },
-      okrs: { enabled: true, format: "structured" },
-    },
+    sections: defaultBriefingSections,
   },
   notificationsConfig: {
     calendar: true,
@@ -78,95 +77,150 @@ const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
     endOfDayTime: "17:30",
   },
   weeklyReviewConfig: {
-    preferredDay: "friday",
+    preferredDay: "friday" as const,
     reminderEnabled: true,
   },
+}
+
+export class SettingsSchemaError extends Error {
+  constructor(
+    message = "Supabase can’t read the settings table for the dashboard yet."
+  ) {
+    super(message)
+    this.name = "SettingsSchemaError"
+  }
 }
 
 function formatSettingsError(message: string) {
   if (message.includes("schema cache")) {
     return new SettingsSchemaError(
-      "Supabase can’t read the settings table yet. Re-run the Phase 4 schema in Supabase SQL Editor or refresh the project API schema cache."
+      "Supabase can’t read the settings table yet. Run the Phase 4 schema in Supabase SQL Editor or refresh the project API schema cache."
     )
   }
 
   return new Error(message)
 }
 
-function isJsonObject(value: unknown): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function mergeJson<T>(current: T, patch: Partial<T> | undefined): T {
-  if (patch === undefined) {
-    return current
-  }
-
-  if (Array.isArray(current) || Array.isArray(patch)) {
-    return patch as T
-  }
-
-  if (!isJsonObject(current) || !isJsonObject(patch)) {
-    return patch as T
-  }
-
-  const merged: JsonObject = { ...current }
-
-  for (const [key, value] of Object.entries(patch)) {
-    const currentValue = merged[key]
-
-    if (value === undefined) {
-      continue
-    }
-
-    if (isJsonObject(currentValue) && isJsonObject(value)) {
-      merged[key] = mergeJson(currentValue, value)
-      continue
-    }
-
-    merged[key] = value
-  }
-
-  return merged as T
-}
-
-function toAppSettings(row: SettingsRow): AppSettings {
+function mapSettingsRow(row: SettingsRow): AppSettings {
   return {
     id: row.id,
     userId: row.user_id,
-    calendarConfig: mergeJson(
-      DEFAULT_SETTINGS_CONFIG.calendarConfig,
-      row.calendar_config
-    ),
-    tasksConfig: mergeJson(DEFAULT_SETTINGS_CONFIG.tasksConfig, row.tasks_config),
-    emailConfig: mergeJson(DEFAULT_SETTINGS_CONFIG.emailConfig, row.email_config),
-    teamsConfig: mergeJson(DEFAULT_SETTINGS_CONFIG.teamsConfig, row.teams_config),
-    okrsConfig: mergeJson(DEFAULT_SETTINGS_CONFIG.okrsConfig, row.okrs_config),
-    briefingConfig: mergeJson(
-      DEFAULT_SETTINGS_CONFIG.briefingConfig,
-      row.briefing_config
-    ),
-    notificationsConfig: mergeJson(
-      DEFAULT_SETTINGS_CONFIG.notificationsConfig,
-      row.notifications_config
-    ),
-    ritualsConfig: mergeJson(
-      DEFAULT_SETTINGS_CONFIG.ritualsConfig,
-      row.rituals_config
-    ),
-    weeklyReviewConfig: mergeJson(
-      DEFAULT_SETTINGS_CONFIG.weeklyReviewConfig,
-      row.weekly_review_config
-    ),
+    calendarConfig: {
+      ...defaultSettingsValues.calendarConfig,
+      ...row.calendar_config,
+    },
+    tasksConfig: {
+      ...defaultSettingsValues.tasksConfig,
+      ...row.tasks_config,
+    },
+    emailConfig: {
+      ...defaultSettingsValues.emailConfig,
+      ...row.email_config,
+    },
+    teamsConfig: {
+      ...defaultSettingsValues.teamsConfig,
+      ...row.teams_config,
+    },
+    okrsConfig: {
+      ...defaultSettingsValues.okrsConfig,
+      ...row.okrs_config,
+    },
+    briefingConfig: {
+      ...defaultSettingsValues.briefingConfig,
+      ...row.briefing_config,
+      sections: {
+        ...defaultSettingsValues.briefingConfig.sections,
+        ...row.briefing_config?.sections,
+      },
+    },
+    notificationsConfig: {
+      ...defaultSettingsValues.notificationsConfig,
+      ...row.notifications_config,
+    },
+    ritualsConfig: {
+      ...defaultSettingsValues.ritualsConfig,
+      ...row.rituals_config,
+    },
+    weeklyReviewConfig: {
+      ...defaultSettingsValues.weeklyReviewConfig,
+      ...row.weekly_review_config,
+    },
   }
 }
 
-async function findSettingsRow(userId: string): Promise<SettingsRow | null> {
-  const supabase = await createClient()
+function buildDefaultSettingsRow(userId: string): SettingsInsert {
+  return {
+    user_id: userId,
+    calendar_config: defaultSettingsValues.calendarConfig,
+    tasks_config: defaultSettingsValues.tasksConfig,
+    email_config: defaultSettingsValues.emailConfig,
+    teams_config: defaultSettingsValues.teamsConfig,
+    okrs_config: defaultSettingsValues.okrsConfig,
+    briefing_config: defaultSettingsValues.briefingConfig,
+    notifications_config: defaultSettingsValues.notificationsConfig,
+    rituals_config: defaultSettingsValues.ritualsConfig,
+    weekly_review_config: defaultSettingsValues.weeklyReviewConfig,
+  }
+}
+
+function mergeSettings(
+  current: AppSettings,
+  patch: AppSettingsPatch
+): SettingsInsert {
+  return {
+    user_id: current.userId,
+    calendar_config: {
+      ...current.calendarConfig,
+      ...patch.calendarConfig,
+    },
+    tasks_config: {
+      ...current.tasksConfig,
+      ...patch.tasksConfig,
+    },
+    email_config: {
+      ...current.emailConfig,
+      ...patch.emailConfig,
+    },
+    teams_config: {
+      ...current.teamsConfig,
+      ...patch.teamsConfig,
+    },
+    okrs_config: {
+      ...current.okrsConfig,
+      ...patch.okrsConfig,
+    },
+    briefing_config: {
+      ...current.briefingConfig,
+      ...patch.briefingConfig,
+      sections: {
+        ...current.briefingConfig.sections,
+        ...patch.briefingConfig?.sections,
+      },
+    },
+    notifications_config: {
+      ...current.notificationsConfig,
+      ...patch.notificationsConfig,
+    },
+    rituals_config: {
+      ...current.ritualsConfig,
+      ...patch.ritualsConfig,
+    },
+    weekly_review_config: {
+      ...current.weeklyReviewConfig,
+      ...patch.weeklyReviewConfig,
+    },
+  }
+}
+
+async function findSettingsRow(
+  userId: string,
+  options: SettingsQueryOptions = {}
+) {
+  const supabase = await getSettingsClient(options)
   const { data, error } = await supabase
     .from("settings")
     .select(
-      "id, user_id, calendar_config, tasks_config, email_config, teams_config, okrs_config, briefing_config, notifications_config, rituals_config, weekly_review_config"
+      "id,user_id,calendar_config,tasks_config,email_config,teams_config,okrs_config,briefing_config,notifications_config,rituals_config,weekly_review_config"
     )
     .eq("user_id", userId)
     .maybeSingle()
@@ -175,16 +229,33 @@ async function findSettingsRow(userId: string): Promise<SettingsRow | null> {
     throw formatSettingsError(error.message)
   }
 
-  return data as SettingsRow | null
+  return (data as SettingsRow | null) ?? null
 }
 
-async function insertDefaultSettings(userId: string): Promise<SettingsRow> {
-  const supabase = await createClient()
+async function getSettingsClient(options: SettingsQueryOptions = {}) {
+  if (options.useAdminClient) {
+    return createAdminClient()
+  }
+
+  return createServerClient()
+}
+
+export async function getSettings(
+  userId: string,
+  options: SettingsQueryOptions = {}
+): Promise<AppSettings> {
+  const existingSettings = await findSettingsRow(userId, options)
+
+  if (existingSettings) {
+    return mapSettingsRow(existingSettings)
+  }
+
+  const supabase = await getSettingsClient(options)
   const { data, error } = await supabase
     .from("settings")
-    .insert({ user_id: userId })
+    .insert(buildDefaultSettingsRow(userId))
     .select(
-      "id, user_id, calendar_config, tasks_config, email_config, teams_config, okrs_config, briefing_config, notifications_config, rituals_config, weekly_review_config"
+      "id,user_id,calendar_config,tasks_config,email_config,teams_config,okrs_config,briefing_config,notifications_config,rituals_config,weekly_review_config"
     )
     .single()
 
@@ -192,61 +263,24 @@ async function insertDefaultSettings(userId: string): Promise<SettingsRow> {
     throw formatSettingsError(error.message)
   }
 
-  return data as SettingsRow
-}
-
-export async function getSettings(userId: string): Promise<AppSettings> {
-  const existingSettings = await findSettingsRow(userId)
-
-  if (existingSettings) {
-    return toAppSettings(existingSettings)
-  }
-
-  const createdSettings = await insertDefaultSettings(userId)
-  return toAppSettings(createdSettings)
+  return mapSettingsRow(data as SettingsRow)
 }
 
 export async function updateSettings(
   userId: string,
-  patch: Partial<AppSettings>
+  patch: AppSettingsPatch,
+  options: SettingsQueryOptions = {}
 ): Promise<AppSettings> {
-  const currentSettings = await getSettings(userId)
+  const currentSettings = await getSettings(userId, options)
+  const supabase = await getSettingsClient(options)
+  const payload = mergeSettings(currentSettings, patch)
 
-  if (patch.userId && patch.userId !== userId) {
-    throw new Error("Settings user ID cannot be changed")
-  }
-
-  const payload = {
-    calendar_config: mergeJson(
-      currentSettings.calendarConfig,
-      patch.calendarConfig
-    ),
-    tasks_config: mergeJson(currentSettings.tasksConfig, patch.tasksConfig),
-    email_config: mergeJson(currentSettings.emailConfig, patch.emailConfig),
-    teams_config: mergeJson(currentSettings.teamsConfig, patch.teamsConfig),
-    okrs_config: mergeJson(currentSettings.okrsConfig, patch.okrsConfig),
-    briefing_config: mergeJson(
-      currentSettings.briefingConfig,
-      patch.briefingConfig
-    ),
-    notifications_config: mergeJson(
-      currentSettings.notificationsConfig,
-      patch.notificationsConfig
-    ),
-    rituals_config: mergeJson(currentSettings.ritualsConfig, patch.ritualsConfig),
-    weekly_review_config: mergeJson(
-      currentSettings.weeklyReviewConfig,
-      patch.weeklyReviewConfig
-    ),
-  }
-
-  const supabase = await createClient()
   const { data, error } = await supabase
     .from("settings")
     .update(payload)
     .eq("user_id", userId)
     .select(
-      "id, user_id, calendar_config, tasks_config, email_config, teams_config, okrs_config, briefing_config, notifications_config, rituals_config, weekly_review_config"
+      "id,user_id,calendar_config,tasks_config,email_config,teams_config,okrs_config,briefing_config,notifications_config,rituals_config,weekly_review_config"
     )
     .single()
 
@@ -254,5 +288,5 @@ export async function updateSettings(
     throw formatSettingsError(error.message)
   }
 
-  return toAppSettings(data as SettingsRow)
+  return mapSettingsRow(data as SettingsRow)
 }

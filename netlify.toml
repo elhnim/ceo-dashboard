@@ -7,6 +7,5 @@
 [functions]
   directory = "netlify/functions"
 
-[[functions]]
-  name = "ea-briefing-pipeline"
+[functions.ea-briefing-pipeline]
   schedule = "30 6 * * *"

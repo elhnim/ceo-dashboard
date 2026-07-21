@@ -14,7 +14,9 @@ const authRoutes = new Set(["/login"])
 export function RootShell({ children }: RootShellProps) {
   const pathname = usePathname()
 
-  if (authRoutes.has(pathname)) {
+  // Founder Console and the login screen provide their own chrome and must not
+  // be wrapped in the CEO Dashboard app shell.
+  if (authRoutes.has(pathname) || pathname === "/console" || pathname.startsWith("/console/")) {
     return <>{children}</>
   }
 

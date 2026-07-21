@@ -7,8 +7,14 @@ const publicPaths = new Set(["/login"])
 export default auth((req) => {
   const pathname = req.nextUrl.pathname
   const isAuthApiRoute = pathname.startsWith("/api/auth")
+  // Founder Console is the single-user MVP surface; authentication is a future
+  // capability, so its pages and API are not gated by Microsoft SSO yet.
+  const isFounderConsole =
+    pathname === "/console" ||
+    pathname.startsWith("/console/") ||
+    pathname.startsWith("/api/console")
 
-  if (isAuthApiRoute || publicPaths.has(pathname)) {
+  if (isAuthApiRoute || isFounderConsole || publicPaths.has(pathname)) {
     return NextResponse.next()
   }
 

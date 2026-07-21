@@ -1,5 +1,20 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Founder Console
+
+This repository also hosts **Founder Console**, a calm executive cockpit for
+supervising a persistent team of AI officers. It is a self-contained module and
+does not affect the existing CEO Dashboard.
+
+- **Open it at [`/console`](http://localhost:3000/console)** — it is not behind
+  Microsoft SSO (authentication is a future capability).
+- Local persistence is a JSON file under `.data/`, seeded with the founding
+  organization on first load. Delete `.data/founder-console.json` to reset.
+- Run the domain test suite with **`npm test`**.
+
+Full documentation, architecture decisions, and the implementation log live in
+[`docs/console/`](docs/console/README.md).
+
 ## Getting Started
 
 First, run the development server:

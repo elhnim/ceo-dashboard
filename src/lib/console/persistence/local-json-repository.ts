@@ -9,9 +9,9 @@
  *
  * Data directory resolution:
  *  - `FOUNDER_CONSOLE_DATA_DIR` env var wins if set.
- *  - On serverless platforms (Vercel / AWS Lambda) the project filesystem is
- *    read-only, so we fall back to the OS temp dir. Persistence there is
- *    ephemeral per instance — acceptable for a demo; see the deploy notes.
+ *  - On serverless platforms (Netlify / Vercel / AWS Lambda) the project
+ *    filesystem is read-only, so we fall back to the OS temp dir. Persistence
+ *    there is ephemeral per instance — acceptable for a demo; see deploy notes.
  *  - Otherwise `.data/` under the project root (local development).
  */
 
@@ -27,7 +27,11 @@ function resolveDataDir(): string {
   if (process.env.FOUNDER_CONSOLE_DATA_DIR) {
     return process.env.FOUNDER_CONSOLE_DATA_DIR
   }
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  if (
+    process.env.NETLIFY ||
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME
+  ) {
     return path.join(os.tmpdir(), "founder-console")
   }
   return path.join(process.cwd(), ".data")

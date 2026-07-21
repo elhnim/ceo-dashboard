@@ -5,7 +5,7 @@
  * ConsoleState and runs serialized read-modify-write transactions. It knows
  * nothing about domain semantics — that lives in the service layer. Swapping
  * the local JSON adapter for SQLite/Postgres/Supabase means implementing this
- * one interface (see docs/console/adr/0002-persistence.md).
+ * one interface (see docs/adr/0002-persistence-and-integrations.md).
  */
 
 import type { ConsoleState } from "@/types/console"

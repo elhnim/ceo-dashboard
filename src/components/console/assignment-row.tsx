@@ -14,7 +14,7 @@ export function AssignmentRow({
 }) {
   return (
     <Link
-      href={`/console/work/${assignment.id}`}
+      href={`/work/${assignment.id}`}
       className="group flex items-center gap-4 rounded-xl border border-border/60 bg-card px-4 py-3.5 ring-1 ring-foreground/[0.02] transition-colors hover:border-border"
     >
       <div className="min-w-0 flex-1">

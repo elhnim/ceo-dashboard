@@ -15,16 +15,16 @@ import {
 import { cn } from "@/lib/utils"
 
 const NAV = [
-  { href: "/console", label: "Home", icon: HomeIcon },
-  { href: "/console/decisions", label: "Decisions", icon: GaugeIcon },
-  { href: "/console/officers", label: "Officers", icon: UsersIcon },
-  { href: "/console/work", label: "Work", icon: BriefcaseIcon },
-  { href: "/console/activity", label: "Activity", icon: ActivityIcon },
-  { href: "/console/ea", label: "EA", icon: MessageSquareIcon },
+  { href: "/", label: "Home", icon: HomeIcon },
+  { href: "/decisions", label: "Decisions", icon: GaugeIcon },
+  { href: "/officers", label: "Officers", icon: UsersIcon },
+  { href: "/work", label: "Work", icon: BriefcaseIcon },
+  { href: "/activity", label: "Activity", icon: ActivityIcon },
+  { href: "/ea", label: "EA", icon: MessageSquareIcon },
 ] as const
 
 function isActive(pathname: string, href: string) {
-  if (href === "/console") return pathname === "/console"
+  if (href === "/") return pathname === "/"
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -35,7 +35,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
     <div className="min-h-svh bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border/60 bg-card/40 px-4 py-6 md:flex">
-        <Link href="/console" className="mb-8 flex items-center gap-3 px-2">
+        <Link href="/" className="mb-8 flex items-center gap-3 px-2">
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground">
             FC
           </span>

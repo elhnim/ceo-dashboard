@@ -3,9 +3,3 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-[functions]
-  directory = "netlify/functions"
-
-[functions.ea-briefing-pipeline]
-  schedule = "30 6 * * *"

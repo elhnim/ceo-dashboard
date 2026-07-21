@@ -1,50 +1,169 @@
-import { auth } from "@/lib/auth"
-import { formatDate, getGreeting } from "@/lib/greeting"
-import { ActiveOKRsWidget } from "@/components/shared/ActiveOKRsWidget"
-import { CalendarWidget } from "@/components/shared/CalendarWidget"
-import { DoThisNextWidget } from "@/components/shared/DoThisNextWidget"
-import { QuickActionsWidget } from "@/components/shared/QuickActionsWidget"
-import { TopPrioritiesWidget } from "@/components/shared/TopPrioritiesWidget"
-import { UrgentEmailWidget } from "@/components/shared/UrgentEmailWidget"
+import Link from "next/link"
 
-function getFirstName(name: string | null | undefined) {
-  return name?.trim().split(/\s+/)[0] || "there"
+import { HealthBadge } from "@/components/console/badges"
+import { DecisionCard } from "@/components/console/decision-card"
+import { DeliverableRow } from "@/components/console/deliverable-row"
+import { OfficerStatusRow } from "@/components/console/officer-status-row"
+import { AssignmentRow } from "@/components/console/assignment-row"
+import {
+  EmptyState,
+  MetricTile,
+  PageHeader,
+  Section,
+} from "@/components/console/primitives"
+import { WorkAssignmentStatus } from "@/lib/console/domain/enums"
+import { getOverview } from "@/lib/console/services/console-service"
+
+export const dynamic = "force-dynamic"
+
+function greeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return "Good morning"
+  if (hour < 18) return "Good afternoon"
+  return "Good evening"
 }
 
-export default async function Home() {
-  const session = await auth()
-  const firstName = getFirstName(session?.user?.name)
-  const greeting = getGreeting()
-  const today = formatDate(new Date())
+export default async function ConsoleHomePage() {
+  const overview = await getOverview()
+  const officerName = new Map(
+    overview.officers.map((o) => [o.officerAssignment.id, o.person.name]),
+  )
+  const name = (id: string) => officerName.get(id) ?? "an officer"
+
+  const m = overview.metrics
+  const continueWorking = overview.activeAssignments.filter(
+    (a) => a.status === WorkAssignmentStatus.InProgress,
+  )
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8">
-      <section className="rounded-[28px] border border-border/70 bg-gradient-to-br from-card via-card to-muted/60 p-6 shadow-sm md:p-8">
-        <p className="text-sm font-medium uppercase tracking-[0.22em] text-muted-foreground">
-          My Day
-        </p>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              {greeting}, {firstName}
-            </h1>
-            <p className="text-base leading-7 text-muted-foreground">{today}</p>
-          </div>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            A calm command center for the day ahead. Keep the next decision
-            obvious, the priorities visible, and the noise pushed to the edges.
-          </p>
-        </div>
-      </section>
+    <>
+      <PageHeader
+        eyebrow="Morning brief"
+        title={`${greeting()}, ${overview.officers.find((o) => o.role.title === "Product Director")?.person.name ?? "Minh"}`}
+        description={
+          overview.latestBrief?.summary ??
+          "Here is where the organization stands right now."
+        }
+        actions={<HealthBadge health={overview.health} />}
+      />
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <DoThisNextWidget />
-        <TopPrioritiesWidget />
-        <CalendarWidget />
-        <ActiveOKRsWidget />
-        <UrgentEmailWidget />
-        <QuickActionsWidget />
-      </section>
-    </div>
+      <Section title="At a glance">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <MetricTile label="Officers active" value={m.officersActive} href="/officers" />
+          <MetricTile label="In progress" value={m.assignmentsInProgress} href="/work" />
+          <MetricTile
+            label="Ready for review"
+            value={m.deliverablesReady}
+            tone={m.deliverablesReady > 0 ? "warn" : "default"}
+            href="/work"
+          />
+          <MetricTile
+            label="Decisions waiting"
+            value={m.decisionsWaiting}
+            tone={m.decisionsWaiting > 0 ? "warn" : "default"}
+            href="/decisions"
+          />
+          <MetricTile
+            label="Blocked"
+            value={m.blockedAssignments}
+            tone={m.blockedAssignments > 0 ? "danger" : "default"}
+            href="/work"
+          />
+          <MetricTile
+            label="Done since brief"
+            value={m.workCompletedSinceLastBrief}
+            tone="good"
+            href="/activity"
+          />
+        </div>
+      </Section>
+
+      <Section
+        title="Needs your attention"
+        description="Decisions ordered by priority."
+        action={
+          overview.waitingDecisions.length > 0 ? (
+            <Link href="/decisions" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              View all
+            </Link>
+          ) : null
+        }
+      >
+        {overview.waitingDecisions.length === 0 ? (
+          <EmptyState
+            title="Nothing needs your judgment"
+            description="The Council is progressing cleanly. You'll see decisions here when they arise."
+          />
+        ) : (
+          <div className="space-y-3">
+            {overview.waitingDecisions.slice(0, 4).map((decision) => (
+              <DecisionCard
+                key={decision.id}
+                decision={decision}
+                requestedBy={name(decision.requestingOfficerAssignmentId)}
+                actions={
+                  <Link
+                    href="/decisions"
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    Review
+                  </Link>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Ready for review" description="Completed deliverables awaiting your approval.">
+        {overview.readyDeliverables.length === 0 ? (
+          <EmptyState title="No deliverables waiting" />
+        ) : (
+          <div className="space-y-3">
+            {overview.readyDeliverables.map((d) => (
+              <DeliverableRow
+                key={d.id}
+                deliverable={d}
+                authorName={name(d.authorOfficerAssignmentId)}
+                href={`/work/${d.assignmentId}`}
+              />
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section
+        title="Officer activity"
+        action={
+          <Link href="/officers" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+            View all
+          </Link>
+        }
+      >
+        <div className="space-y-3">
+          {overview.officers
+            .filter((o) => o.role.title !== "Product Director")
+            .map((summary) => (
+              <OfficerStatusRow key={summary.officerAssignment.id} summary={summary} />
+            ))}
+        </div>
+      </Section>
+
+      <Section title="Continue working" description="Active work you can pick back up.">
+        {continueWorking.length === 0 ? (
+          <EmptyState title="Nothing in progress right now" />
+        ) : (
+          <div className="space-y-3">
+            {continueWorking.map((a) => (
+              <AssignmentRow
+                key={a.id}
+                assignment={a}
+                ownerName={name(a.ownerOfficerAssignmentId)}
+              />
+            ))}
+          </div>
+        )}
+      </Section>
+    </>
   )
 }

@@ -21,7 +21,7 @@ export function DeliverableReview({ deliverableId }: { deliverableId: string }) 
   async function review(outcome: DeliverableReviewOutcome) {
     setPending(outcome)
     try {
-      const res = await fetch(`/api/console/deliverables/${deliverableId}/review`, {
+      const res = await fetch(`/api/deliverables/${deliverableId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ outcome, comment: comment.trim() }),

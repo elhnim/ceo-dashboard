@@ -29,7 +29,7 @@ export function AssignWorkPanel({
     }
     setPending(true)
     try {
-      const res = await fetch("/api/console/work", {
+      const res = await fetch("/api/work", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

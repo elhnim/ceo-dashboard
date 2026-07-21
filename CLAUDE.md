@@ -1,140 +1,101 @@
 @AGENTS.md
 
-# CEO Dashboard — Project Conventions
+# Founder Console — Project Conventions
+
+Founder Console is a calm executive cockpit for one Product Director to
+supervise a small team of persistent AI officers — review deliverables, resolve
+decisions, answer questions, and understand organizational progress from web and
+mobile, with the lowest possible cognitive load.
+
+It is a standalone application. It runs locally with no external services or
+credentials.
 
 ## Stack
-- Next.js 16.2.4 (App Router), React 19, TypeScript (strict)
-- Tailwind CSS v4, shadcn/ui (base-nova style, Lucide icons)
-- Supabase (Postgres + client SDK)
-- NextAuth.js for Microsoft SSO
-- PWA (service worker + manifest)
-- Deployed on Netlify
+- Next.js 16 (App Router), React 19, TypeScript (strict)
+- Tailwind CSS v4, shadcn/ui (base-nova style, Lucide icons), next-themes
+- Local JSON persistence behind a repository port (no external database)
+- `sonner` for toasts
+- Deployable on Netlify (`@netlify/plugin-nextjs`)
 
 ## Project Structure
 
 ```
 src/
-├── app/                          # Next.js App Router
-│   ├── layout.tsx                # Root layout (providers, nav)
-│   ├── page.tsx                  # My Day landing page
-│   ├── (auth)/                   # Auth route group
-│   │   ├── login/page.tsx
-│   │   └── api/auth/[...nextauth]/route.ts
-│   ├── businesses/               # Business module
-│   │   ├── page.tsx              # Business list
-│   │   ├── [id]/page.tsx         # Business detail
-│   │   └── [id]/vmv/page.tsx     # Vision/Mission/Values
-│   ├── okrs/                     # OKR module
-│   ├── tasks/                    # Tasks module
-│   ├── calendar/                 # Calendar module
-│   ├── email/                    # Email triage module
-│   └── api/                      # API route handlers
-│       ├── businesses/route.ts
-│       ├── businesses/[id]/route.ts
-│       ├── businesses/[id]/vmv/route.ts
-│       ├── okrs/route.ts
-│       └── ...
+├── app/                     # Next.js App Router — Founder Console lives at root
+│   ├── layout.tsx           # Root layout (ThemeProvider + ConsoleShell + Toaster)
+│   ├── page.tsx             # Home — the executive morning brief
+│   ├── decisions/page.tsx   # Decision queue
+│   ├── officers/            # Officer directory + [id] detail
+│   ├── work/                # Work board + [id] assignment detail
+│   ├── activity/page.tsx    # Organization activity timeline
+│   ├── ea/page.tsx          # Executive Assistant chat
+│   ├── loading.tsx · error.tsx · not-found.tsx
+│   └── api/                 # Route handlers (decisions, deliverables, work, ea, brief)
 ├── components/
-│   ├── ui/                       # shadcn/ui (DO NOT MODIFY)
-│   ├── layout/                   # App shell: nav, sidebar, header
-│   ├── businesses/               # Business-specific components
-│   ├── okrs/                     # OKR-specific components
-│   ├── tasks/                    # Task-specific components
-│   ├── calendar/                 # Calendar-specific components
-│   ├── email/                    # Email-specific components
-│   └── shared/                   # Cross-module components
+│   ├── ui/                  # shadcn/ui (DO NOT MODIFY — managed by shadcn CLI)
+│   └── console/             # Founder Console components (shell, cards, rows, client actions)
 ├── lib/
-│   ├── utils.ts                  # shadcn utility (cn function)
-│   ├── supabase/
-│   │   ├── client.ts             # Browser Supabase client
-│   │   ├── server.ts             # Server Supabase client
-│   │   └── admin.ts              # Service role client (migrations only)
-│   └── services/
-│       ├── microsoft-graph.ts    # MS Graph API abstraction
-│       ├── businesses.ts         # Business data operations
-│       ├── okrs.ts               # OKR data operations
-│       └── ...
-├── hooks/                        # Custom React hooks
-│   ├── use-mobile.ts             # Mobile detection (shadcn)
-│   └── ...
-└── types/
-    ├── database.ts               # Supabase generated types
-    ├── business.ts               # Business domain types
-    ├── okr.ts                    # OKR domain types
-    └── ...
+│   ├── utils.ts             # cn()
+│   └── console/
+│       ├── domain/          # enums · validation · logic (pure reads) · transitions (pure writes)
+│       ├── persistence/     # repository port · local JSON adapter · founding seed
+│       ├── integrations/    # provider interfaces · mock adapters
+│       ├── ea/              # deterministic Executive Assistant (ConversationProvider)
+│       ├── services/        # application service (the only thing routes/pages call)
+│       └── format.ts        # UI formatting helpers
+└── types/console/           # domain entity types
+
+tests/console/               # node --test suite (+ zero-dep @/ resolution loader)
+docs/                        # README, implementation log, ADRs
 ```
 
 ## Coding Rules
 
 ### TypeScript
-- Strict mode — no `any` unless absolutely necessary
-- Use `@/*` import alias (maps to `./src/*`)
-- Named exports (except Next.js pages/layouts which use default)
-- Define types in `src/types/` and import them
+- Strict mode — no `any` unless unavoidable.
+- Use the `@/*` import alias (maps to `./src/*`).
+- **Enums are `as const` objects + union types**, never the TS `enum` keyword
+  (type-stripping safe for the test runner; bundler-friendly).
+- Named exports (except Next.js pages/layouts which use default).
 
 ### Next.js
-- Server Components by default — only `"use client"` for browser APIs, hooks, event handlers
-- API routes: `src/app/api/[resource]/route.ts`
-- Use `Response.json()` in route handlers
-- Dynamic route params via `params` prop (NOT useParams in server components)
-- Read `node_modules/next/dist/docs/` for current API docs — this version may differ from training data
+- Server Components by default — `"use client"` only for browser APIs, hooks,
+  event handlers.
+- Route handlers in `src/app/api/[resource]/route.ts`, returning `Response.json`
+  with a `{ data, error }` shape and proper status codes.
+- Dynamic route params arrive as `params: Promise<...>` — `await` them.
+- Read `node_modules/next/dist/docs/` for current API docs — this version may
+  differ from training data (see AGENTS.md).
 
-### React
-- Functional components only
-- Custom hooks in `src/hooks/`
-- State management via React context (no Redux/Zustand unless needed later)
+### Architecture boundaries
+- **The UI never touches the repository.** Pages and route handlers call the
+  application service (`src/lib/console/services/console-service.ts`), which
+  wraps pure transitions in serialized repository transactions.
+- **Domain logic imports no vendor SDK.** External systems (AI models,
+  notifications, source control, deployment, knowledge) are reachable only by
+  implementing a provider interface in `src/lib/console/integrations/`.
+- **Roles are modelled separately from the people filling them** (Person ↔ Role
+  via OfficerAssignment).
+- Keep all business entities strongly typed; put types in `src/types/console`.
 
 ### Styling
-- Tailwind v4 utility classes
-- `cn()` from `@/lib/utils` to merge classes
-- shadcn/ui components from `@/components/ui/` — use them, don't reinvent
-- DO NOT modify `src/components/ui/*` — managed by shadcn CLI
-- Custom components go in `src/components/[module]/`
+- Tailwind v4 utility classes; `cn()` from `@/lib/utils` to merge.
+- Use shadcn/ui components from `@/components/ui`; do not modify them.
+- Design direction: calm, premium, deliberate, low cognitive load. Avoid neon AI
+  aesthetics, busy dashboards, and dense tables as the default view. Use
+  progressive disclosure — summary first, detail on demand.
 
-### Supabase
-- Browser client: `@/lib/supabase/client.ts`
-- Server client: `@/lib/supabase/server.ts`
-- Admin client: `@/lib/supabase/admin.ts` (service role, migrations only)
-- Always use typed queries with types from `@/types/database.ts`
+### Testing
+- `npm test` runs the domain/validation/workflow/EA/seed suite via `node --test`
+  (zero dependencies). Never claim completion without running it.
 
-### API Service Layer
-- All external API calls go through service files in `src/lib/services/`
-- Services are the abstraction layer — components never call APIs directly
-- Each service exports typed functions, not classes
+## Persistence
+Local JSON at `.data/founder-console.json` (git-ignored), seeded on first load.
+Delete it to reset. Swap `LocalJsonRepository` for a real database by
+implementing `ConsoleRepository` — see `docs/adr/0002-persistence-and-integrations.md`.
 
-### File Naming
-- Components: PascalCase (`BusinessCard.tsx`)
-- Utilities/services: camelCase (`supabase.ts`, `microsoftGraph.ts`)
-- Types: PascalCase files (`Business.ts`) with named type exports
-- API routes: kebab-case dirs (`/api/businesses/route.ts`)
-
-### No Comments Unless
-- Explaining a non-obvious "why"
-- Documenting a workaround for a specific bug
-- A hidden constraint that would surprise a reader
-
-### Error Handling
-- API routes: return proper HTTP status codes with `{ error: string }` body
-- UI: show user-friendly error states using shadcn components
-- Services: throw typed errors, let callers handle display
-
-## Environment Variables
-```
-NEXT_PUBLIC_SUPABASE_URL          # Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY     # Supabase anon/public key
-SUPABASE_SERVICE_ROLE_KEY         # Supabase service role (server only)
-MICROSOFT_CLIENT_ID               # Azure AD app client ID
-MICROSOFT_CLIENT_SECRET           # Azure AD app client secret
-MICROSOFT_TENANT_ID               # Azure AD tenant ID
-NEXTAUTH_SECRET                   # NextAuth encryption secret
-NEXTAUTH_URL                      # App URL (http://localhost:3000)
-```
-
-## Module Independence
-Each module (businesses, okrs, tasks, calendar, email) is self-contained:
-- Own page routes in `src/app/[module]/`
-- Own API routes in `src/app/api/[module]/`
-- Own components in `src/components/[module]/`
-- Own service in `src/lib/services/[module].ts`
-- Own types in `src/types/[module].ts`
-- Modules never import from each other's components — shared things go in `src/components/shared/`
+## Out of scope (typed placeholders only)
+Autonomous orchestration, voice, model routing, graph databases, GitHub/
+deployment automation, multi-tenant SaaS, billing, and the full Organizational
+Twin/Mind. Provider interfaces exist for these seams; do not implement them
+without a present reason.

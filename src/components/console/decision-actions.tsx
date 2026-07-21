@@ -26,7 +26,7 @@ export function DecisionActions({ decisionId }: { decisionId: string }) {
   async function resolve(action: string) {
     setPending(action)
     try {
-      const res = await fetch(`/api/console/decisions/${decisionId}`, {
+      const res = await fetch(`/api/decisions/${decisionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, rationale: rationale.trim() || undefined }),

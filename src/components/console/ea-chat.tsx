@@ -52,7 +52,7 @@ export function EaChat({ initial }: { initial: ConversationTurn[] }) {
     setPending(true)
     setMessage("")
     try {
-      const res = await fetch("/api/console/ea", {
+      const res = await fetch("/api/ea", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed }),

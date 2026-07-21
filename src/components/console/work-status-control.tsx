@@ -29,7 +29,7 @@ export function WorkStatusControl({
     if (status === current && !needsReason) return
     setPending(true)
     try {
-      const res = await fetch(`/api/console/work/${assignmentId}/status`, {
+      const res = await fetch(`/api/work/${assignmentId}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, reason: reason.trim() || undefined }),

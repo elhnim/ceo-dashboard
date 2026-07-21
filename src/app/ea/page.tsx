@@ -1,20 +1,40 @@
 import { EaChat } from "@/components/console/ea-chat"
+import { EaWorkspacePanels } from "@/components/console/ea-workspace-panels"
 import { PageHeader } from "@/components/console/primitives"
-import { getConversation } from "@/lib/console/services/console-service"
+import { DecisionStatus } from "@/lib/console/domain/enums"
+import { sortByPriority } from "@/lib/console/domain/logic"
+import {
+  getConversation,
+  listDecisions,
+} from "@/lib/console/services/console-service"
 
 export const dynamic = "force-dynamic"
 
-export default async function EaPage() {
-  const conversation = await getConversation()
+export default async function EaWorkspacePage() {
+  const [conversation, decisions] = await Promise.all([
+    getConversation(),
+    listDecisions(),
+  ])
+  const pending = sortByPriority(
+    decisions.filter((d) => d.status === DecisionStatus.Waiting),
+    (d) => d.priority,
+  )
 
   return (
     <>
       <PageHeader
         eyebrow="Executive Assistant"
-        title="Talk to Vera"
-        description="Your EA reads the live state of the organization. Ask for an update, triage what needs you, or prepare your brief."
+        title="Your executive office"
+        description="Vera reads the live state of the organization. Converse on the left; her recommendations, research, drafts, and your pending decisions sit alongside."
       />
-      <EaChat initial={conversation} />
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <EaChat initial={conversation} />
+        </div>
+        <aside className="lg:col-span-2">
+          <EaWorkspacePanels pendingDecisions={pending} />
+        </aside>
+      </div>
     </>
   )
 }

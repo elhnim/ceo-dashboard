@@ -23,12 +23,12 @@ credentials.
 src/
 ├── app/                     # Next.js App Router — Founder Console lives at root
 │   ├── layout.tsx           # Root layout (ThemeProvider + ConsoleShell + Toaster)
-│   ├── page.tsx             # Home — the executive morning brief
-│   ├── decisions/page.tsx   # Decision queue
-│   ├── officers/            # Officer directory + [id] detail
+│   ├── page.tsx             # Executive Brief — Today's Priorities + position
+│   ├── organization/        # Organization directory + [id] officer detail
 │   ├── work/                # Work board + [id] assignment detail
-│   ├── activity/page.tsx    # Organization activity timeline
-│   ├── ea/page.tsx          # Executive Assistant chat
+│   ├── decisions/page.tsx   # Decision queue
+│   ├── knowledge/page.tsx   # Organizational record (future Organizational Mind)
+│   ├── ea/page.tsx          # Executive Assistant workspace (chat + panels)
 │   ├── loading.tsx · error.tsx · not-found.tsx
 │   └── api/                 # Route handlers (decisions, deliverables, work, ea, brief)
 ├── components/

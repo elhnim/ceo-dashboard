@@ -2,6 +2,35 @@
 
 Concise record of what was built and the decisions taken along the way.
 
+## 2026-07-21 — Milestone 1.1: Executive Office revisions
+
+A refinement pass from Executive Office review; no redesign, no scope
+expansion. All existing architecture retained.
+
+1. **Executive Brief.** Home renamed; a dominant **Today's Priorities** section
+   now leads the screen — the 3–5 items worth the Director's next 30 minutes,
+   ranked by urgency and impact via a new pure domain function
+   (`todaysPriorities` in `domain/logic.ts`, 9 new tests). Each priority
+   carries title, why it matters, estimated time, a deterministic confidence
+   level, and a recommended action. Below it: brief highlights/risks, position
+   metrics, deliverables, officer updates, work in motion.
+2. **Navigation.** New order: Executive Brief · Organization · Work ·
+   Decisions · Knowledge · Executive Assistant. `/officers` →
+   `/organization`, `/activity` → `/knowledge` (permanent redirects keep old
+   links working). Knowledge hosts the organizational record and states it
+   will become the Organizational Mind in future milestones.
+3. **EA workspace.** The EA page is now a workspace: conversation plus panels
+   for Recommendations (sample), Research (sample), Drafts (sample), and
+   Pending Decisions (live from state).
+4. **Canonical model boundary.** ADR 0004 records that the engineering model
+   is not the Organizational Twin ontology; the types header points to it.
+5. **Knowledge metadata.** All nine major entities gained an optional
+   `meta?: KnowledgeMetadata` field (provenance, confidence, evidence,
+   relatedEntities, history). Nothing reads or writes it — preparation only.
+6. **Copy & polish.** Dashboard/monitoring language replaced with
+   direct/decide/execute language; loading skeleton matches the new Brief;
+   mobile nav uses short labels.
+
 ## 2026-07-21 — MVP build
 
 1. **Foundation.** Domain types (`src/types/console`), `as const` enums with

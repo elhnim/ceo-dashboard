@@ -4,7 +4,7 @@ import { listOfficers } from "@/lib/console/services/console-service"
 
 export const dynamic = "force-dynamic"
 
-export default async function OfficersPage() {
+export default async function OrganizationPage() {
   const officers = await listOfficers()
   const director = officers.filter((o) => o.role.title === "Product Director")
   const council = officers.filter((o) => o.role.title !== "Product Director")
@@ -12,9 +12,9 @@ export default async function OfficersPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Officer directory"
-        title="Officers"
-        description="Your persistent AI team. Open an officer to see their charter, current work, and the questions or blockers they've raised."
+        eyebrow="Organization"
+        title="Your organization"
+        description="The officers executing your intent. Open anyone to see their charter, their commitments, and what they need from you."
       />
 
       <Section title="Founding Council">

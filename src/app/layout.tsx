@@ -7,7 +7,8 @@ import "./globals.css"
 
 export const metadata: Metadata = {
   title: "Founder Console",
-  description: "A calm executive cockpit for supervising a persistent AI team.",
+  description:
+    "The executive operating system for directing a persistent AI organization.",
 }
 
 export const viewport: Viewport = {

@@ -33,12 +33,14 @@ npm run build   # production build
 
 | Screen | Route | Purpose |
 | --- | --- | --- |
-| **Home** | `/` | The executive morning brief: org health, summary metrics, decisions needing you, deliverables ready for review, officer activity, and work to continue. |
+| **Executive Brief** | `/` | The primary workspace: **Today's Priorities** (the 3–5 items worth your next 30 minutes, ranked), organization health and position, deliverables ready for review, officer updates, and work to continue. |
+| **Organization** | `/organization` | Your officers and their charters — mission, authority, boundaries, commitments, blockers, activity. Includes **Assign work**. |
+| **Work** | `/work` | The organization's commitments grouped by status, with per-assignment detail and **deliverable review** (Approve / Request revision / Reject). |
 | **Decisions** | `/decisions` | Prioritized decision queue. Approve / Reject / Modify / Discuss / Delegate / Defer, with a recorded rationale. |
-| **Officers** | `/officers` | The officer directory and per-officer detail (charter, mission, authority, boundaries, current work, deliverables, blockers, activity). Includes **Assign work**. |
-| **Work** | `/work` | Assignments grouped by status, with per-assignment detail and **deliverable review** (Approve / Request revision / Reject). |
-| **Activity** | `/activity` | The organization-wide chronological event feed. |
-| **EA** | `/ea` | A chat with the Executive Assistant. Deterministic for the MVP; swappable for a real model via `ConversationProvider`. |
+| **Knowledge** | `/knowledge` | The organizational record today; becomes the Organizational Mind in future milestones. |
+| **Executive Assistant** | `/ea` | A workspace: conversation with Vera plus panels for recommendations, research, drafts, and pending decisions. Deterministic for the MVP; swappable for a real model via `ConversationProvider`. |
+
+Old routes (`/officers`, `/activity`) permanently redirect to their new homes.
 
 ## Architecture
 
@@ -73,6 +75,7 @@ See the ADRs for the reasoning:
 - [0001 — Stack & architecture](docs/adr/0001-stack-and-architecture.md)
 - [0002 — Persistence & integration boundaries](docs/adr/0002-persistence-and-integrations.md)
 - [0003 — Testing approach](docs/adr/0003-testing.md)
+- [0004 — Engineering model vs. Organizational Twin ontology](docs/adr/0004-canonical-model-boundary.md)
 
 Full documentation and the implementation log live in [`docs/`](docs/README.md).
 

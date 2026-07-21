@@ -5,6 +5,10 @@
  * who fill them: a Role is a durable position with a mission and authority; an
  * OfficerAssignment binds a Person to a Role for a period. This mirrors the
  * long-term platform's separation of "position" from "occupant".
+ *
+ * IMPORTANT — this model represents the current engineering implementation and
+ * must NOT be treated as the final Organizational Twin ontology. See
+ * docs/adr/0004-canonical-model-boundary.md.
  */
 
 import type {
@@ -27,6 +31,26 @@ import type {
 /** ISO-8601 timestamp string. */
 export type IsoDateTime = string
 
+/**
+ * Optional knowledge metadata — architectural preparation for the future
+ * Organizational Mind. Every major entity can carry it, but nothing reads or
+ * writes it yet: no business logic, no UI exposure, no persistence
+ * requirement. All fields (and the container itself) are optional so existing
+ * data and seeds remain valid unchanged.
+ */
+export interface KnowledgeMetadata {
+  /** Where this knowledge came from (system, officer, document, session…). */
+  provenance?: string
+  /** 0–1 confidence in the entity's current content. */
+  confidence?: number
+  /** Links or references supporting the entity's content. */
+  evidence?: EvidenceLink[]
+  /** Ids of related entities, cross-type. */
+  relatedEntities?: string[]
+  /** Prior states or change notes, newest last. */
+  history?: Array<{ at: IsoDateTime; note: string }>
+}
+
 export interface Organization {
   id: string
   name: string
@@ -35,6 +59,7 @@ export interface Organization {
   status: OrganizationHealth
   createdAt: IsoDateTime
   updatedAt: IsoDateTime
+  meta?: KnowledgeMetadata
 }
 
 export interface Person {
@@ -42,6 +67,7 @@ export interface Person {
   name: string
   personType: PersonType
   title: string
+  meta?: KnowledgeMetadata
 }
 
 export interface Role {
@@ -53,6 +79,7 @@ export interface Role {
   boundaries: string[]
   reportsToRoleId: string | null
   status: RoleStatus
+  meta?: KnowledgeMetadata
 }
 
 export interface OfficerAssignment {
@@ -62,6 +89,7 @@ export interface OfficerAssignment {
   startDate: IsoDateTime
   status: OfficerAssignmentStatus
   probationStatus: ProbationStatus
+  meta?: KnowledgeMetadata
 }
 
 export interface ProgressUpdate {
@@ -88,6 +116,7 @@ export interface WorkAssignment {
   createdBy: string
   createdAt: IsoDateTime
   updatedAt: IsoDateTime
+  meta?: KnowledgeMetadata
 }
 
 export interface ReviewComment {
@@ -111,6 +140,7 @@ export interface Deliverable {
   supportingEvidence: EvidenceLink[]
   createdAt: IsoDateTime
   reviewedAt: IsoDateTime | null
+  meta?: KnowledgeMetadata
 }
 
 export interface EvidenceLink {
@@ -143,6 +173,7 @@ export interface Decision {
   resolution: DecisionAction | null
   rationale: string | null
   decidedAt: IsoDateTime | null
+  meta?: KnowledgeMetadata
 }
 
 export interface ActivityEvent {
@@ -155,6 +186,7 @@ export interface ActivityEvent {
   relatedEntityType: RelatedEntityType | null
   relatedEntityId: string | null
   occurredAt: IsoDateTime
+  meta?: KnowledgeMetadata
 }
 
 export interface ExecutiveBrief {
@@ -168,6 +200,7 @@ export interface ExecutiveBrief {
   deliverablesReady: number
   organizationHealth: OrganizationHealth
   generatedAt: IsoDateTime
+  meta?: KnowledgeMetadata
 }
 
 /** The complete persisted state of a Founder Console organization. */

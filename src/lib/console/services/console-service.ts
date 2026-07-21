@@ -19,9 +19,11 @@ import {
   latestBrief,
   officerSummary,
   readyDeliverables,
+  todaysPriorities,
   waitingDecisions,
   type OfficerSummary,
   type OrganizationMetrics,
+  type TodayPriority,
 } from "@/lib/console/domain/logic"
 import {
   appendConversationTx,
@@ -65,6 +67,7 @@ export interface Overview {
   organization: Organization
   health: ReturnType<typeof deriveHealth>
   metrics: OrganizationMetrics
+  todaysPriorities: TodayPriority[]
   waitingDecisions: Decision[]
   readyDeliverables: Deliverable[]
   officers: OfficerSummary[]
@@ -78,6 +81,7 @@ export async function getOverview(): Promise<Overview> {
     organization: state.organization,
     health: deriveHealth(state),
     metrics: computeMetrics(state),
+    todaysPriorities: todaysPriorities(state),
     waitingDecisions: waitingDecisions(state),
     readyDeliverables: readyDeliverables(state),
     officers: allOfficerSummaries(state),

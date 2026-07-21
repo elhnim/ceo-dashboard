@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { ActivityList } from "@/components/console/activity-list"
 import { HealthBadge } from "@/components/console/badges"
 import { DeliverableRow } from "@/components/console/deliverable-row"
 import { OfficerStatusRow } from "@/components/console/officer-status-row"
@@ -12,7 +13,7 @@ import {
   Section,
 } from "@/components/console/primitives"
 import { WorkAssignmentStatus } from "@/lib/console/domain/enums"
-import { getOverview } from "@/lib/console/services/console-service"
+import { getActivity, getOverview } from "@/lib/console/services/console-service"
 
 export const dynamic = "force-dynamic"
 
@@ -24,7 +25,10 @@ function greeting(): string {
 }
 
 export default async function ExecutiveBriefPage() {
-  const overview = await getOverview()
+  const [overview, recentActivity] = await Promise.all([
+    getOverview(),
+    getActivity(5),
+  ])
   const officerName = new Map(
     overview.officers.map((o) => [o.officerAssignment.id, o.person.name]),
   )
@@ -187,6 +191,20 @@ export default async function ExecutiveBriefPage() {
             ))}
           </div>
         )}
+      </Section>
+
+      <Section
+        title="Latest activity"
+        action={
+          <Link
+            href="/knowledge"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Full record
+          </Link>
+        }
+      >
+        <ActivityList events={recentActivity} />
       </Section>
     </>
   )

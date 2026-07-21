@@ -39,7 +39,7 @@ the Product Director.
 
 ## Known limitations
 
-- Persistence is ephemeral on serverless (Vercel `/tmp`, resets per instance).
+- Persistence is ephemeral on serverless (Netlify `/tmp`, resets per instance).
 - No real agent backend (`AgentProvider` defined but unwired).
 - The EA is deterministic, not a live model.
 - No authentication (single-user MVP).

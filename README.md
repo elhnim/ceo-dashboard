@@ -76,22 +76,24 @@ See the ADRs for the reasoning:
 
 Full documentation and the implementation log live in [`docs/`](docs/README.md).
 
-## Deploying to Vercel
+## Deploying to Netlify
 
-The app is a standard Next.js project — Vercel auto-detects it, no config needed.
+The app deploys on Netlify via `@netlify/plugin-nextjs` (configured in
+`netlify.toml`).
 
-1. Import the GitHub repo at <https://vercel.com/new> (Framework preset: Next.js).
-2. No environment variables are required for the MVP.
+1. Connect the GitHub repo in Netlify (New site → Import from Git).
+2. Build command `npm run build` and the Next.js plugin are picked up from
+   `netlify.toml`; no environment variables are required for the MVP.
 3. Deploy. Every push to `main` ships automatically.
 
-**Persistence on serverless:** the MVP stores state in a JSON file. Vercel's
-project filesystem is read-only, so on Vercel the repository automatically falls
-back to the OS temp dir (`/tmp`). This makes the app run, but persistence is
-**ephemeral** — each serverless instance has its own copy and it resets when the
-instance recycles, so decisions/reviews may not survive across requests. That is
-fine for a demo or executive review; for durable multi-user state, implement a
-real database behind `ConsoleRepository` (see ADR 0002). Override the location
-anywhere with the `FOUNDER_CONSOLE_DATA_DIR` env var.
+**Persistence on serverless:** the MVP stores state in a JSON file. Netlify (like
+any serverless host) has a read-only deployed filesystem, so the repository
+automatically falls back to the OS temp dir (`/tmp`). This makes the app run, but
+persistence is **ephemeral** — each function instance has its own copy and it
+resets when the instance recycles, so decisions/reviews may not survive across
+requests. That is fine for a demo or executive review; for durable multi-user
+state, implement a real database behind `ConsoleRepository` (see ADR 0002).
+Override the location anywhere with the `FOUNDER_CONSOLE_DATA_DIR` env var.
 
 ## Connecting real agents later
 

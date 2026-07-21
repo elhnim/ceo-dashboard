@@ -1,21 +1,39 @@
 /**
  * Founder Console — local JSON persistence adapter.
  *
- * Implements ConsoleRepository against a single JSON file under `.data/`. On
- * first use it writes the founding seed. Transactions are serialized through
- * an in-process promise chain so concurrent dev-server requests can't race on
- * the file. Suitable for local single-user development; production would swap
- * in a real database behind the same interface.
+ * Implements ConsoleRepository against a single JSON file. On first use it
+ * writes the founding seed. Transactions are serialized through an in-process
+ * promise chain so concurrent dev-server requests can't race on the file.
+ * Suitable for local single-user development; production would swap in a real
+ * database behind the same interface.
+ *
+ * Data directory resolution:
+ *  - `FOUNDER_CONSOLE_DATA_DIR` env var wins if set.
+ *  - On serverless platforms (Vercel / AWS Lambda) the project filesystem is
+ *    read-only, so we fall back to the OS temp dir. Persistence there is
+ *    ephemeral per instance — acceptable for a demo; see the deploy notes.
+ *  - Otherwise `.data/` under the project root (local development).
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 
 import { createSeedState } from "./seed"
 import type { ConsoleRepository } from "./repository"
 import type { ConsoleState } from "@/types/console"
 
-const DATA_DIR = path.join(process.cwd(), ".data")
+function resolveDataDir(): string {
+  if (process.env.FOUNDER_CONSOLE_DATA_DIR) {
+    return process.env.FOUNDER_CONSOLE_DATA_DIR
+  }
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), "founder-console")
+  }
+  return path.join(process.cwd(), ".data")
+}
+
+const DATA_DIR = resolveDataDir()
 const DATA_FILE = path.join(DATA_DIR, "founder-console.json")
 
 function clone<T>(value: T): T {

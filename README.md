@@ -76,6 +76,23 @@ See the ADRs for the reasoning:
 
 Full documentation and the implementation log live in [`docs/`](docs/README.md).
 
+## Deploying to Vercel
+
+The app is a standard Next.js project — Vercel auto-detects it, no config needed.
+
+1. Import the GitHub repo at <https://vercel.com/new> (Framework preset: Next.js).
+2. No environment variables are required for the MVP.
+3. Deploy. Every push to `main` ships automatically.
+
+**Persistence on serverless:** the MVP stores state in a JSON file. Vercel's
+project filesystem is read-only, so on Vercel the repository automatically falls
+back to the OS temp dir (`/tmp`). This makes the app run, but persistence is
+**ephemeral** — each serverless instance has its own copy and it resets when the
+instance recycles, so decisions/reviews may not survive across requests. That is
+fine for a demo or executive review; for durable multi-user state, implement a
+real database behind `ConsoleRepository` (see ADR 0002). Override the location
+anywhere with the `FOUNDER_CONSOLE_DATA_DIR` env var.
+
 ## Connecting real agents later
 
 Implement the relevant interface in `src/lib/console/integrations/providers.ts`

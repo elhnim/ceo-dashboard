@@ -1,7 +1,7 @@
 # Organizational Primitives v0.1 — Working Paper
 
 _Architecture Sprint 1 · Founding Council · 22 July 2026_
-_Status: **Draft — pending Executive review.** Nothing here is canonical yet._
+_Status: **Ratified by the Product Director, 22 July 2026 — canonized as ADR 0006.**_
 
 ## Purpose
 

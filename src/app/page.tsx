@@ -1,21 +1,18 @@
 import Link from "next/link"
-
-import { ActivityList } from "@/components/console/activity-list"
-import { HealthBadge } from "@/components/console/badges"
-import { CommitmentRow } from "@/components/console/commitment-row"
-import { DeliverableRow } from "@/components/console/deliverable-row"
-import { OfficerStatusRow } from "@/components/console/officer-status-row"
-import { AssignmentRow } from "@/components/console/assignment-row"
-import { TodayPriorities } from "@/components/console/today-priorities"
 import {
-  EmptyState,
-  MetricTile,
-  PageHeader,
-  Section,
-} from "@/components/console/primitives"
-import { WorkAssignmentStatus } from "@/lib/console/domain/enums"
-import { isOverdue } from "@/lib/console/domain/logic"
-import { getActivity, getOverview } from "@/lib/console/services/console-service"
+  ArrowRightIcon,
+  BookOpenIcon,
+  CircleCheckIcon,
+  GitBranchIcon,
+  LandmarkIcon,
+  ScrollTextIcon,
+} from "lucide-react"
+
+import { BeginSessionButton, ApprovalActions } from "@/components/console/office-actions"
+import { EmptyState, PageHeader, Section } from "@/components/console/primitives"
+import { formatDateTime } from "@/lib/console/format"
+import { getProjectBriefing } from "@/lib/console/project/service"
+import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
 
@@ -26,275 +23,348 @@ function greeting(): string {
   return "Good evening"
 }
 
-export default async function ExecutiveBriefPage() {
-  const [overview, recentActivity] = await Promise.all([
-    getOverview(),
-    getActivity(5),
-  ])
-  const officerName = new Map(
-    overview.officers.map((o) => [o.officerAssignment.id, o.person.name]),
-  )
-  const name = (id: string) => officerName.get(id) ?? "an officer"
+const HEALTH_DOT = { green: "bg-emerald-500", yellow: "bg-amber-500", red: "bg-red-500" } as const
+const HEALTH_WORD = { green: "Green", yellow: "Yellow", red: "Red" } as const
 
-  const m = overview.metrics
-  const mo = overview.momentum
-  const now = new Date().toISOString()
-  const continueWorking = overview.activeAssignments.filter(
-    (a) => a.status === WorkAssignmentStatus.InProgress,
-  )
+const APPROVAL_KIND_LABEL = {
+  architecture: "Architecture approval",
+  merge: "Merge approval",
+  roadmap: "Roadmap decision",
+  research: "Research review",
+} as const
 
-  const momentumParts = [
-    mo.commitmentsCompleted > 0
-      ? `${mo.commitmentsCompleted} commitment${mo.commitmentsCompleted > 1 ? "s" : ""} delivered`
-      : null,
-    mo.commitmentsVerified > 0
-      ? `${mo.commitmentsVerified} verified`
-      : null,
-    mo.decisionsResolved > 0
-      ? `${mo.decisionsResolved} decision${mo.decisionsResolved > 1 ? "s" : ""} resolved`
-      : null,
-    mo.deliverablesApproved > 0
-      ? `${mo.deliverablesApproved} deliverable${mo.deliverablesApproved > 1 ? "s" : ""} approved`
-      : null,
-    mo.workCompleted > 0 ? `${mo.workCompleted} assignments closed` : null,
-  ].filter(Boolean)
+const ITEM_STATUS_LABEL = {
+  planned: "Planned",
+  "in-progress": "In progress",
+  "in-review": "In review",
+  blocked: "Blocked",
+  done: "Done",
+} as const
+
+export default async function ExecutiveOfficePage() {
+  const b = await getProjectBriefing()
 
   return (
     <>
       <PageHeader
-        eyebrow="Executive Brief"
-        title={`${greeting()}, ${overview.officers.find((o) => o.role.title === "Product Director")?.person.name ?? "Minh"}`}
-        description={
-          overview.latestBrief?.summary ??
-          "Here is where the organization stands right now."
+        eyebrow="Executive Office"
+        title={`${greeting()}, Minh`}
+        description={b.overallStatus}
+        actions={
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1 text-xs font-medium">
+            <span className={cn("size-2 rounded-full", HEALTH_DOT[b.health])} />
+            {HEALTH_WORD[b.health]} · {b.healthReason}
+          </span>
         }
-        actions={<HealthBadge health={overview.health.health} showColorWord />}
       />
 
+      {/* Executive Brief */}
+      <Section title="Executive brief" className="mb-10">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <BriefCell label="Current layer" value={b.currentLayer.name.replace(/^Layer \d+ — /, "")} sub={`Layer ${b.currentLayer.id.split("-")[1]}`} />
+          <BriefCell label="Current milestone" value={b.currentMilestone.title} sub={b.currentMilestone.code} />
+          <BriefCell
+            label="Current sprint"
+            value={b.currentSprint ? b.currentSprint.title.replace(/^Architecture Sprint \d+ — /, "") : "None active"}
+            sub={b.currentSprint ? b.currentSprint.title.match(/Sprint \d+/)?.[0] ?? "" : ""}
+          />
+          <BriefCell
+            label="Milestone progress"
+            value={`${b.milestoneProgress.done} of ${b.milestoneProgress.total} items done`}
+            sub={b.health === "green" ? "On track" : b.healthReason}
+          />
+        </div>
+      </Section>
+
+      {/* Recommended Next Action */}
       <Section
-        title="Today's priorities"
-        description="If you only have 30 minutes today, spend them here — ranked by urgency and impact."
+        title="Recommended next action"
+        description="Exactly one. Derived by the Project State Engine from approvals, sessions, and the roadmap."
         className="mb-12"
-        action={
-          overview.waitingDecisions.length > 0 ? (
-            <Link
-              href="/decisions"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              All decisions ({overview.waitingDecisions.length})
-            </Link>
-          ) : null
-        }
       >
-        <TodayPriorities items={overview.todaysPriorities} />
-      </Section>
-
-      <Section
-        title="Focus today"
-        description="The highest-value commitments in motion — blocked and due-soon first."
-        action={
-          <Link
-            href="/commitments"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            All commitments
-          </Link>
-        }
-      >
-        {overview.focusToday.length === 0 ? (
-          <EmptyState title="No open commitments" description="Delegate an outcome to create one." />
-        ) : (
-          <div className="space-y-3">
-            {overview.focusToday.map((c) => (
-              <CommitmentRow
-                key={c.id}
-                commitment={c}
-                ownerName={name(c.ownerOfficerAssignmentId)}
-                overdue={isOverdue(c, now)}
-              />
-            ))}
+        <div className="rounded-2xl border border-foreground/25 bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-18px_rgba(0,0,0,0.25)] sm:p-6">
+          <h3 className="text-lg font-semibold leading-snug tracking-tight sm:text-xl">
+            {b.recommended.title}
+          </h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            <span className="font-medium text-foreground/80">Why now: </span>
+            {b.recommended.why}
+          </p>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">Executive time</dt>
+              <dd className="mt-0.5 font-medium">~{b.recommended.estimatedMinutes} min</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">Expected outcome</dt>
+              <dd className="mt-0.5">{b.recommended.expectedOutcome}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">Expected impact</dt>
+              <dd className="mt-0.5">{b.recommended.expectedImpact}</dd>
+            </div>
+          </dl>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <BeginSessionButton />
+            {b.recommended.source !== "session" ? (
+              <Link
+                href={b.recommended.href}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted"
+              >
+                Open the recommendation
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            ) : null}
           </div>
-        )}
+        </div>
       </Section>
 
+      {/* Waiting For Me */}
       <Section
         title="Waiting for me"
-        description="Everything that needs your attention, in one list."
+        description="Executive approvals only — no engineering noise."
       >
-        {overview.waitingForMe.length === 0 ? (
-          <EmptyState title="Nothing is waiting on you" />
+        {b.waitingForMe.length === 0 ? (
+          <EmptyState title="Nothing awaits your approval" />
         ) : (
           <div className="space-y-2">
-            {overview.waitingForMe.map((item) => (
-              <Link
-                key={`${item.kind}-${item.id}`}
-                href={item.href}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/40 px-4 py-3 transition-colors hover:border-border"
+            {b.waitingForMe.map((a) => (
+              <div
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    {APPROVAL_KIND_LABEL[a.kind]} · ~{a.estimatedMinutes} min
+                  </p>
+                  <p className="mt-0.5 text-sm font-medium">
+                    {a.href.startsWith("http") ? (
+                      <a href={a.href} className="hover:underline" target="_blank" rel="noreferrer">
+                        {a.title}
+                      </a>
+                    ) : (
+                      <Link href={a.href} className="hover:underline">
+                        {a.title}
+                      </Link>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{a.detail}</p>
+                </div>
+                <ApprovalActions approvalId={a.id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      {/* Active Work */}
+      <Section
+        title="Active work"
+        description={`${b.currentMilestone.code} — ${b.currentMilestone.objective}`}
+      >
+        {b.activeWork.length === 0 ? (
+          <EmptyState title="The current milestone has no open items" />
+        ) : (
+          <div className="space-y-2">
+            {b.activeWork.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/40 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">{item.detail}</p>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.owner} · est. {item.eta}
+                  </p>
                 </div>
-                <span className="shrink-0 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                  {item.kind === "verification" ? "Verify" : item.kind === "decision" ? "Decide" : "Review"}
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium",
+                    item.status === "blocked"
+                      ? "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                      : item.status === "in-progress"
+                        ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                        : "border-border bg-muted text-muted-foreground",
+                  )}
+                >
+                  {ITEM_STATUS_LABEL[item.status]}
                 </span>
-              </Link>
+              </div>
             ))}
           </div>
         )}
       </Section>
 
-      <Section title="Emerging risks" description="Deterministic signals from observable state.">
-        {overview.emergingRisks.length === 0 ? (
-          <EmptyState title="No emerging risks" description="Nothing overdue, blocked, or overloaded." />
-        ) : (
-          <div className="space-y-2">
-            {overview.emergingRisks.map((risk, i) => (
-              <Link
-                key={`${risk.kind}-${i}`}
-                href={risk.href}
-                className="flex items-start gap-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 transition-colors hover:border-amber-500/40"
-              >
-                <span className="mt-1.5 size-2 shrink-0 rounded-full bg-amber-500" />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{risk.title}</span>
-                  <span className="block text-xs text-muted-foreground">{risk.detail}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section title="Momentum" description="Progress since your previous brief.">
-        {momentumParts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nothing has concluded since the last brief — the organization is mid-stride.
-          </p>
-        ) : (
-          <p className="text-sm leading-7">
-            {momentumParts.join(" · ")}
-            {overview.latestBrief?.highlights?.length ? (
-              <span className="mt-2 block text-muted-foreground">
-                {overview.latestBrief.highlights.join(" · ")}
-              </span>
-            ) : null}
-          </p>
-        )}
-      </Section>
-
-      <Section title="The organization's position">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <MetricTile
-            label="Active commitments"
-            value={overview.activeCommitmentCount}
-            href="/commitments"
-          />
-          <MetricTile
-            label="Completed this week"
-            value={overview.completedThisWeek}
-            tone="good"
-            href="/commitments"
-          />
-          <MetricTile
-            label="Decisions waiting"
-            value={m.decisionsWaiting}
-            tone={m.decisionsWaiting > 0 ? "warn" : "default"}
-            href="/decisions"
-          />
-          <MetricTile
-            label="Ready for review"
-            value={m.deliverablesReady}
-            tone={m.deliverablesReady > 0 ? "warn" : "default"}
-            href="/work"
-          />
-          <MetricTile
-            label={
-              overview.maxWorkload
-                ? `Heaviest workload — ${overview.maxWorkload.name}`
-                : "Officer workload"
-            }
-            value={overview.maxWorkload?.load ?? 0}
-            href="/organization"
-          />
-          <MetricTile
-            label="Blocked"
-            value={m.blockedAssignments}
-            tone={m.blockedAssignments > 0 ? "danger" : "default"}
-            href="/work"
-          />
-        </div>
-      </Section>
-
+      {/* Research Prepared */}
       <Section
-        title="Ready for review"
-        description="Completed deliverables awaiting your approval."
-      >
-        {overview.readyDeliverables.length === 0 ? (
-          <EmptyState title="No deliverables waiting" />
-        ) : (
-          <div className="space-y-3">
-            {overview.readyDeliverables.map((d) => (
-              <DeliverableRow
-                key={d.id}
-                deliverable={d}
-                authorName={name(d.authorOfficerAssignmentId)}
-                href={`/work/${d.assignmentId}`}
-              />
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section
-        title="Officer updates"
-        action={
-          <Link
-            href="/organization"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Full organization
-          </Link>
-        }
+        title="Research prepared"
+        description="Completed research awaiting your review — supporting material for the next session."
       >
         <div className="space-y-3">
-          {overview.officers
-            .filter((o) => o.role.title !== "Product Director")
-            .map((summary) => (
-              <OfficerStatusRow key={summary.officerAssignment.id} summary={summary} />
-            ))}
+          {b.researchPrepared.map((r) => (
+            <details key={r.id} className="group rounded-xl border border-border/60 bg-card px-4 py-3.5">
+              <summary className="flex cursor-pointer items-center gap-3 text-sm font-medium">
+                <BookOpenIcon className="size-4 shrink-0 text-muted-foreground" />
+                <span className="flex-1">{r.title}</span>
+                <span className="text-xs font-normal text-muted-foreground">{r.source}</span>
+              </summary>
+              <div className="mt-3 space-y-2 border-t border-border/50 pt-3 text-sm leading-6 text-muted-foreground">
+                <p>{r.summary}</p>
+                <p>
+                  <span className="font-medium text-foreground/80">Why it matters here: </span>
+                  {r.relevance}
+                </p>
+              </div>
+            </details>
+          ))}
         </div>
       </Section>
 
-      <Section title="Continue working" description="Commitments in motion you can pick back up.">
-        {continueWorking.length === 0 ? (
-          <EmptyState title="Nothing in progress right now" />
-        ) : (
-          <div className="space-y-3">
-            {continueWorking.map((a) => (
-              <AssignmentRow
-                key={a.id}
-                assignment={a}
-                ownerName={name(a.ownerOfficerAssignmentId)}
-              />
-            ))}
-          </div>
-        )}
+      {/* Engineering Status */}
+      <Section title="Engineering status" description="Curated facts, refreshed each engineering cycle.">
+        <div className="rounded-xl border border-border/60 bg-card px-4 py-2 sm:px-5">
+          <dl className="divide-y divide-border/50 text-sm">
+            <EngRow icon={<GitBranchIcon className="size-4" />} label="Branch">
+              <code className="text-xs">{b.engineering.branch}</code>
+            </EngRow>
+            <EngRow icon={<CircleCheckIcon className="size-4" />} label="Build & tests">
+              Build {b.engineering.buildStatus} · {b.engineering.tests.passing}/{b.engineering.tests.total} tests passing
+            </EngRow>
+            <EngRow icon={<LandmarkIcon className="size-4" />} label="Latest milestone">
+              {b.engineering.latestMilestone}
+            </EngRow>
+            <EngRow icon={<ScrollTextIcon className="size-4" />} label="Latest ADR">
+              {b.engineering.latestAdr}
+            </EngRow>
+            {b.engineering.openPullRequest ? (
+              <EngRow icon={<GitBranchIcon className="size-4" />} label="Open pull request">
+                {b.engineering.openPullRequest}
+              </EngRow>
+            ) : null}
+          </dl>
+        </div>
       </Section>
 
-      <Section
-        title="Latest activity"
-        action={
-          <Link
-            href="/knowledge"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Full timeline
-          </Link>
-        }
-      >
-        <ActivityList events={recentActivity} />
+      {/* Architecture Backlog */}
+      <Section title="Architecture backlog" description="Prioritized questions — engineering stays paused until these are settled.">
+        <ol className="space-y-2">
+          {b.architectureBacklog.map((item, i) => (
+            <li
+              key={item.id}
+              className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/40 px-4 py-3"
+            >
+              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs leading-5 text-muted-foreground">{item.detail}</p>
+              </div>
+              <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                {item.status}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      {/* Product Backlog */}
+      <Section title="Product backlog" description="Upcoming milestones, ordered by priority.">
+        <ol className="space-y-2">
+          {b.productBacklog.map((ms) => (
+            <li
+              key={ms.id}
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-4 py-3",
+                ms.status === "current"
+                  ? "border-foreground/20 bg-card"
+                  : "border-border/50 bg-card/40",
+              )}
+            >
+              <span className="mt-0.5 shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.65rem] font-semibold">
+                {ms.code}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">
+                  {ms.title}
+                  {ms.status === "current" ? (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">— current</span>
+                  ) : null}
+                </p>
+                <p className="text-xs leading-5 text-muted-foreground">{ms.objective}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      {/* Executive Log */}
+      <Section title="Executive log" description="Milestones approved, decisions taken, orders issued.">
+        <ol className="relative space-y-0 border-l border-border/60 pl-6">
+          {b.log.map((entry, i) => (
+            <li key={`${entry.at}-${i}`} className="relative pb-5 last:pb-0">
+              <span
+                className={cn(
+                  "absolute -left-[1.6rem] top-1 size-2.5 rounded-full ring-4 ring-background",
+                  entry.kind === "order"
+                    ? "bg-sky-500"
+                    : entry.kind === "decision"
+                      ? "bg-emerald-500"
+                      : entry.kind === "architecture"
+                        ? "bg-amber-500"
+                        : "bg-muted-foreground/50",
+                )}
+              />
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <p className="text-sm font-medium">{entry.title}</p>
+                <time className="text-xs text-muted-foreground">{formatDateTime(entry.at)}</time>
+              </div>
+              <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">{entry.kind}</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{entry.detail}</p>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      <Section title="The organization" description="The coordination engine beneath this office.">
+        <Link
+          href="/brief"
+          className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3.5 text-sm font-medium transition-colors hover:border-border"
+        >
+          Open the organization brief — priorities, commitments, officers, risks
+          <ArrowRightIcon className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </Section>
     </>
+  )
+}
+
+function BriefCell({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card px-4 py-4">
+      <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold leading-snug">{value}</p>
+      {sub ? <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p> : null}
+    </div>
+  )
+}
+
+function EngRow({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <span className="text-muted-foreground">{icon}</span>
+      <dt className="w-36 shrink-0 text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="min-w-0 flex-1">{children}</dd>
+    </div>
   )
 }

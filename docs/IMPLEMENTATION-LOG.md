@@ -2,6 +2,30 @@
 
 Concise record of what was built and the decisions taken along the way.
 
+## 2026-07-22 — EO-005: Executive Office v0.1 + Primitives ratified
+
+Executive Order EO-005: Founder Console becomes the first organization it
+manages. Also this cycle: the Product Director ratified Organizational
+Primitives v0.1 (ADR 0006); Architecture Sprint 1 is complete.
+
+1. **Project State Engine** (`src/lib/console/project/`): typed state, seed of
+   real program facts (layers, milestones, sprints, approvals, research,
+   backlogs, executive log, engineering facts), pure derivations (health,
+   status, progress, waiting list, exactly one recommended next action,
+   session agenda), repository with runtime-mutation persistence, service, and
+   11 integrity tests. Nothing in the UI hardcodes program data.
+2. **Executive Office home** replaces the Executive Brief at `/`: brief cells,
+   the single recommended action with Begin Session, Waiting For Me
+   (approve/defer recorded to the log), active work, research prepared,
+   engineering status, architecture backlog, product backlog, executive log.
+   The organization brief moved to `/brief`, linked from the Office.
+3. **Begin Session** (`/session`): opens the highest-priority prepared agenda
+   — questions, supporting research, expected deliverables, and a decision
+   framed per the Executive Decision Protocol. Starting a session is recorded
+   by the engine.
+4. **Docs**: `docs/architecture/self-coordination.md` explains the operating
+   loop; ADR 0006 canonizes the primitives.
+
 ## 2026-07-22 — Milestone 2: Executive Coordination Engine
 
 Founder Console became an executive operating system: decide, delegate, track

@@ -8,8 +8,8 @@ import {
   BriefcaseIcon,
   GaugeIcon,
   HandshakeIcon,
+  LandmarkIcon,
   MessageSquareIcon,
-  SunriseIcon,
   UsersIcon,
 } from "lucide-react"
 
@@ -17,7 +17,7 @@ import { DelegateButton } from "@/components/console/delegate-dialog"
 import { cn } from "@/lib/utils"
 
 const NAV = [
-  { href: "/", label: "Executive Brief", short: "Brief", icon: SunriseIcon },
+  { href: "/", label: "Executive Office", short: "Office", icon: LandmarkIcon },
   { href: "/organization", label: "Organization", short: "Org", icon: UsersIcon },
   { href: "/commitments", label: "Commitments", short: "Commit", icon: HandshakeIcon },
   { href: "/work", label: "Work", short: "Work", icon: BriefcaseIcon },

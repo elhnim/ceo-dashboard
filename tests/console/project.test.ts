@@ -29,7 +29,7 @@ test("exactly one layer and one milestone are current", () => {
   assert.equal(s.layers.filter((l) => l.status === "current").length, 1)
   assert.equal(s.milestones.filter((m) => m.status === "current").length, 1)
   assert.equal(currentLayer(s).id, "layer-3")
-  assert.equal(currentMilestone(s).code, "EO-005")
+  assert.equal(currentMilestone(s).code, "AS-2")
 })
 
 test("the engine always derives exactly one recommended action", () => {
@@ -104,7 +104,7 @@ test("product backlog is priority-ordered and excludes completed milestones", ()
 test("the briefing feeds every Executive Office panel from derived state", () => {
   const b = briefing(createProjectSeed())
   assert.ok(b.currentLayer && b.currentMilestone && b.currentSprint)
-  assert.ok(b.overallStatus.includes("EO-005"))
+  assert.ok(b.overallStatus.includes("AS-2"))
   assert.ok(["green", "yellow", "red"].includes(b.health))
   assert.ok(b.waitingForMe.length > 0)
   assert.ok(b.activeWork.length > 0)

@@ -7,6 +7,8 @@ in the [root README](../README.md). This folder holds the deeper material.
 
 - [Implementation log](IMPLEMENTATION-LOG.md) — what was built and the decisions
   taken along the way.
+- [Organizational Primitives v0.1](architecture/organizational-primitives-v0.1.md) —
+  Architecture Sprint 1 working paper (draft, pending Executive review).
 - Architecture decision records:
   - [0001 — Stack & architecture](adr/0001-stack-and-architecture.md)
   - [0002 — Persistence & integration boundaries](adr/0002-persistence-and-integrations.md)

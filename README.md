@@ -33,7 +33,9 @@ npm run build   # production build
 
 | Screen | Route | Purpose |
 | --- | --- | --- |
-| **Executive Brief** | `/` | The primary workspace: **Today's Priorities**, **Focus Today** (highest-value commitments), **Waiting For Me**, Green/Yellow/Red health, **Emerging Risks**, **Momentum**, position metrics, deliverables, officer updates, and the latest activity. |
+| **Executive Office** | `/` | The home screen (EO-005): Founder Console coordinates its own development — current layer/milestone/sprint, project health, **exactly one recommended next action**, **Begin Session**, Waiting For Me approvals, active work, prepared research, engineering status, backlogs, and the executive log — all derived from the **Project State Engine**. |
+| **Session** | `/session` | Today's executive agenda: questions, supporting research, expected deliverables, and a framed decision. |
+| **Organization Brief** | `/brief` | The organization's morning brief: Today's Priorities, Focus Today, Waiting For Me, risks, momentum, officer updates. |
 | **Organization** | `/organization` | Your officers: objectives, active/completed/overdue **commitments**, workload, average confidence, and a delivery score from observable data — plus charter, work, and blockers. |
 | **Commitments** | `/commitments` | Owned promises to deliver outcomes, with success criteria and a full lifecycle (Draft → Committed → In progress → Blocked ⇄ → Completed → **Verified** by you). |
 | **Work** | `/work` | Execution detail: assignments grouped by status, with **deliverable review** (Approve / Request revision / Reject). |
@@ -82,6 +84,7 @@ See the ADRs for the reasoning:
 - [0003 — Testing approach](docs/adr/0003-testing.md)
 - [0004 — Engineering model vs. Organizational Twin ontology](docs/adr/0004-canonical-model-boundary.md)
 - [0005 — Commitment engine & decision workflow](docs/adr/0005-commitment-engine.md)
+- [0006 — Canonical organizational primitives](docs/adr/0006-canonical-primitives.md)
 
 Full documentation and the implementation log live in [`docs/`](docs/README.md).
 

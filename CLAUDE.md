@@ -23,7 +23,9 @@ credentials.
 src/
 ├── app/                     # Next.js App Router — Founder Console lives at root
 │   ├── layout.tsx           # Root layout (ThemeProvider + ConsoleShell + Toaster)
-│   ├── page.tsx             # Executive Brief — priorities, focus, waiting, risks, momentum
+│   ├── page.tsx             # Executive Office — self-coordination home (EO-005)
+│   ├── session/page.tsx     # Begin Session — today's executive agenda
+│   ├── brief/page.tsx       # Organization brief — priorities, focus, waiting, risks
 │   ├── organization/        # Organization directory + [id] officer management
 │   ├── commitments/         # Commitment board + [id] detail (lifecycle + verification)
 │   ├── work/                # Work board + [id] assignment detail
@@ -42,6 +44,7 @@ src/
 │       ├── persistence/     # repository port · local JSON adapter · founding seed
 │       ├── integrations/    # provider interfaces · mock adapters
 │       ├── ea/              # deterministic Executive Assistant (ConversationProvider)
+│       ├── project/         # Project State Engine — FC's own program (seed · logic · engine · service)
 │       ├── services/        # application service (the only thing routes/pages call)
 │       └── format.ts        # UI formatting helpers
 └── types/console/           # domain entity types

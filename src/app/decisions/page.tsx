@@ -1,9 +1,14 @@
 import { DecisionActions } from "@/components/console/decision-actions"
 import { DecisionCard } from "@/components/console/decision-card"
+import { DecisionStageActions } from "@/components/console/decision-stage-actions"
+import { StageBadge } from "@/components/console/badges"
 import { EmptyState, PageHeader, Section } from "@/components/console/primitives"
-import { DecisionStatusLabel } from "@/lib/console/domain/enums"
-import { sortByPriority } from "@/lib/console/domain/logic"
-import { DecisionStatus } from "@/lib/console/domain/enums"
+import {
+  DecisionStage,
+  DecisionStatus,
+  DecisionStatusLabel,
+} from "@/lib/console/domain/enums"
+import { endOfDueDay, sortByPriority } from "@/lib/console/domain/logic"
 import { getState } from "@/lib/console/services/console-service"
 import { formatRelative } from "@/lib/console/format"
 
@@ -11,18 +16,32 @@ export const dynamic = "force-dynamic"
 
 export default async function DecisionsPage() {
   const state = await getState()
+  const now = new Date().toISOString()
   const name = (id: string) => {
     const oa = state.officerAssignments.find((o) => o.id === id)
     const person = oa ? state.people.find((p) => p.id === oa.personId) : undefined
     return person?.name ?? "an officer"
   }
+  const commitmentTitles = (ids: string[]) =>
+    ids
+      .map((id) => state.commitments.find((c) => c.id === id)?.title)
+      .filter((t): t is string => t !== undefined)
 
   const waiting = sortByPriority(
     state.decisions.filter((d) => d.status === DecisionStatus.Waiting),
     (d) => d.priority,
   )
+  // Approved decisions still moving through execution and verification.
+  const inExecution = state.decisions.filter(
+    (d) =>
+      d.stage === DecisionStage.Approved || d.stage === DecisionStage.Executed,
+  )
   const resolved = state.decisions
-    .filter((d) => d.status !== DecisionStatus.Waiting)
+    .filter(
+      (d) =>
+        d.status !== DecisionStatus.Waiting &&
+        !inExecution.some((x) => x.id === d.id),
+    )
     .sort((a, b) => (b.decidedAt ?? "").localeCompare(a.decidedAt ?? ""))
 
   return (
@@ -30,7 +49,7 @@ export default async function DecisionsPage() {
       <PageHeader
         eyebrow="Decision queue"
         title="Decisions"
-        description="Everything awaiting your judgment, most urgent first. Each card carries the recommendation and the alternatives so you can decide in one place."
+        description="Everything awaiting your judgment, most urgent first — then approved decisions moving through execution to verification."
       />
 
       <Section title={`Waiting on you (${waiting.length})`}>
@@ -46,6 +65,9 @@ export default async function DecisionsPage() {
                 key={decision.id}
                 decision={decision}
                 requestedBy={name(decision.requestingOfficerAssignmentId)}
+                ownerName={name(decision.decisionOwnerId)}
+                linkedCommitmentTitles={commitmentTitles(decision.linkedCommitmentIds)}
+                overdue={decision.dueDate !== null && endOfDueDay(decision.dueDate) < now}
                 expanded
                 actions={<DecisionActions decisionId={decision.id} />}
               />
@@ -53,6 +75,33 @@ export default async function DecisionsPage() {
           </div>
         )}
       </Section>
+
+      {inExecution.length > 0 ? (
+        <Section
+          title={`In execution (${inExecution.length})`}
+          description="Approved — track them to executed, then verify the outcome."
+        >
+          <div className="space-y-2">
+            {inExecution.map((d) => (
+              <div
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/40 px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-medium">{d.title}</p>
+                    <StageBadge stage={d.stage} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {d.rationale ?? d.executiveSummary}
+                  </p>
+                </div>
+                <DecisionStageActions decisionId={d.id} stage={d.stage} />
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
       {resolved.length > 0 ? (
         <Section title="Recently resolved">
@@ -63,7 +112,10 @@ export default async function DecisionsPage() {
                 className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/40 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{d.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-medium">{d.title}</p>
+                    <StageBadge stage={d.stage} />
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {DecisionStatusLabel[d.status]}
                     {d.decidedAt ? ` · ${formatRelative(d.decidedAt)}` : ""}

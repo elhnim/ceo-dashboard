@@ -2,13 +2,14 @@ import Link from "next/link"
 import {
   FileTextIcon,
   GaugeIcon,
+  HandshakeIcon,
   LightbulbIcon,
   SearchIcon,
 } from "lucide-react"
 
-import { PriorityBadge } from "@/components/console/badges"
+import { CommitmentBadge, PriorityBadge } from "@/components/console/badges"
 import { minutes } from "@/lib/console/format"
-import type { Decision } from "@/types/console"
+import type { Commitment, Decision } from "@/types/console"
 import type { LucideIcon } from "lucide-react"
 
 /**
@@ -55,11 +56,41 @@ function SampleRow({ title, note }: { title: string; note: string }) {
 
 export function EaWorkspacePanels({
   pendingDecisions,
+  activeCommitments,
 }: {
   pendingDecisions: Decision[]
+  activeCommitments: Commitment[]
 }) {
   return (
     <div className="flex flex-col gap-4">
+      <Panel icon={HandshakeIcon} title="Active commitments" hint="Live">
+        {activeCommitments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No open commitments.</p>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {activeCommitments.slice(0, 4).map((c) => (
+              <Link
+                key={c.id}
+                href={`/commitments/${c.id}`}
+                className="group flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium group-hover:underline">
+                    {c.title}
+                  </span>
+                  {c.dueDate ? (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Due {c.dueDate.slice(0, 10)}
+                    </span>
+                  ) : null}
+                </span>
+                <CommitmentBadge status={c.status} />
+              </Link>
+            ))}
+          </div>
+        )}
+      </Panel>
+
       <Panel icon={GaugeIcon} title="Pending decisions" hint="Live">
         {pendingDecisions.length === 0 ? (
           <p className="text-sm text-muted-foreground">

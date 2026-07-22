@@ -11,35 +11,55 @@ import "server-only"
 
 import {
   activeAssignments,
+  activeCommitments,
   activityFeed,
   allOfficerSummaries,
+  averageConfidence,
+  commitmentsForOfficer,
   computeMetrics,
-  deriveHealth,
+  deliveryScore,
+  emergingRisks,
+  focusToday,
   generateBrief as buildBrief,
+  healthSignal,
+  isOverdue,
   latestBrief,
+  momentum,
   officerSummary,
+  officerWorkload,
   readyDeliverables,
   todaysPriorities,
   waitingDecisions,
+  waitingForMe,
+  type EmergingRisk,
+  type Momentum,
+  type OfficerCommitments,
   type OfficerSummary,
   type OrganizationMetrics,
   type TodayPriority,
+  type WaitingItem,
 } from "@/lib/console/domain/logic"
 import {
+  addCommitmentNoteTx,
   appendConversationTx,
+  createCommitmentTx,
   createWorkAssignmentTx,
   resolveDecisionTx,
   reviewDeliverableTx,
+  setCommitmentStatusTx,
+  setDecisionStageTx,
   setWorkStatusTx,
   type DeliverableReviewOutcome,
+  type NewCommitmentInput,
   type NewWorkAssignmentInput,
 } from "@/lib/console/domain/transitions"
 import { WORK_ASSIGNMENT_STATUS_ORDER } from "@/lib/console/domain/enums"
 import { getIntegrations } from "@/lib/console/integrations/mock-adapters"
 import { getRepository } from "@/lib/console/persistence/local-json-repository"
-import type { DecisionAction } from "@/lib/console/domain/enums"
+import type { DecisionAction, DecisionStage } from "@/lib/console/domain/enums"
 import type {
   ActivityEvent,
+  Commitment,
   ConsoleState,
   ConversationTurn,
   Decision,
@@ -65,9 +85,16 @@ export async function getState(): Promise<ConsoleState> {
 
 export interface Overview {
   organization: Organization
-  health: ReturnType<typeof deriveHealth>
+  health: ReturnType<typeof healthSignal>
   metrics: OrganizationMetrics
   todaysPriorities: TodayPriority[]
+  focusToday: Commitment[]
+  waitingForMe: WaitingItem[]
+  emergingRisks: EmergingRisk[]
+  momentum: Momentum
+  activeCommitmentCount: number
+  completedThisWeek: number
+  maxWorkload: { name: string; load: number } | null
   waitingDecisions: Decision[]
   readyDeliverables: Deliverable[]
   officers: OfficerSummary[]
@@ -77,16 +104,37 @@ export interface Overview {
 
 export async function getOverview(): Promise<Overview> {
   const state = await repo().load()
+  const nowIso = now()
+  const prior = latestBrief(state)
+  const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+
+  let maxWorkload: Overview["maxWorkload"] = null
+  for (const summary of allOfficerSummaries(state)) {
+    if (summary.role.title === "Product Director") continue
+    const load = officerWorkload(state, summary.officerAssignment.id)
+    if (!maxWorkload || load > maxWorkload.load)
+      maxWorkload = { name: summary.person.name, load }
+  }
+
   return {
     organization: state.organization,
-    health: deriveHealth(state),
+    health: healthSignal(state, nowIso),
     metrics: computeMetrics(state),
     todaysPriorities: todaysPriorities(state),
+    focusToday: focusToday(state, nowIso),
+    waitingForMe: waitingForMe(state),
+    emergingRisks: emergingRisks(state, nowIso),
+    momentum: momentum(state, prior ? prior.periodEnd : null),
+    activeCommitmentCount: activeCommitments(state).length,
+    completedThisWeek: state.commitments.filter(
+      (c) => c.completedAt !== null && c.completedAt > weekAgo,
+    ).length,
+    maxWorkload,
     waitingDecisions: waitingDecisions(state),
     readyDeliverables: readyDeliverables(state),
     officers: allOfficerSummaries(state),
     activeAssignments: activeAssignments(state),
-    latestBrief: latestBrief(state),
+    latestBrief: prior,
   }
 }
 
@@ -96,6 +144,10 @@ export async function listOfficers(): Promise<OfficerSummary[]> {
 
 export interface OfficerDetail {
   summary: OfficerSummary
+  commitments: OfficerCommitments
+  workload: number
+  averageConfidence: ReturnType<typeof averageConfidence>
+  deliveryScore: ReturnType<typeof deliveryScore>
   deliverables: Deliverable[]
   decisions: Decision[]
   activity: ActivityEvent[]
@@ -109,6 +161,10 @@ export async function getOfficerDetail(
   if (!summary) return null
   return {
     summary,
+    commitments: commitmentsForOfficer(state, officerAssignmentId, now()),
+    workload: officerWorkload(state, officerAssignmentId),
+    averageConfidence: averageConfidence(state, officerAssignmentId),
+    deliveryScore: deliveryScore(state, officerAssignmentId),
     deliverables: state.deliverables.filter(
       (d) => d.authorOfficerAssignmentId === officerAssignmentId,
     ),
@@ -119,6 +175,110 @@ export async function getOfficerDetail(
       .filter((e) => e.actorId === officerAssignmentId)
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
   }
+}
+
+// --- Commitments (Milestone 2) ------------------------------------------------
+
+export async function listCommitments(): Promise<Commitment[]> {
+  return (await repo().load()).commitments
+}
+
+export interface CommitmentDetail {
+  commitment: Commitment
+  ownerName: string
+  requestedByName: string
+  dependencies: Commitment[]
+  dependents: Commitment[]
+  linkedDecisions: Decision[]
+  overdue: boolean
+}
+
+export async function getCommitmentDetail(
+  id: string,
+): Promise<CommitmentDetail | null> {
+  const state = await repo().load()
+  const commitment = state.commitments.find((c) => c.id === id)
+  if (!commitment) return null
+  const nameOf = (oaId: string) => {
+    const oa = state.officerAssignments.find((o) => o.id === oaId)
+    const person = oa ? state.people.find((p) => p.id === oa.personId) : undefined
+    return person?.name ?? "an officer"
+  }
+  return {
+    commitment,
+    ownerName: nameOf(commitment.ownerOfficerAssignmentId),
+    requestedByName: nameOf(commitment.requestedById),
+    dependencies: commitment.dependencyIds
+      .map((depId) => state.commitments.find((c) => c.id === depId))
+      .filter((c): c is Commitment => c !== undefined),
+    dependents: state.commitments.filter((c) =>
+      c.dependencyIds.includes(commitment.id),
+    ),
+    linkedDecisions: state.decisions.filter((d) =>
+      commitment.linkedDecisionIds.includes(d.id),
+    ),
+    overdue: isOverdue(commitment, now()),
+  }
+}
+
+export async function createCommitment(
+  data: NewCommitmentInput,
+): Promise<Commitment> {
+  return repo().transaction((state) =>
+    createCommitmentTx(state, { data, id: genId("cm"), at: now() }),
+  )
+}
+
+export async function setCommitmentStatus(
+  id: string,
+  status: Commitment["status"],
+  options?: { reason?: string; note?: string },
+): Promise<Commitment> {
+  return repo().transaction((state) =>
+    setCommitmentStatusTx(state, {
+      id,
+      status,
+      reason: options?.reason,
+      note: options?.note,
+      at: now(),
+    }),
+  )
+}
+
+export async function addCommitmentNote(
+  id: string,
+  note: string,
+): Promise<Commitment> {
+  return repo().transaction((state) =>
+    addCommitmentNoteTx(state, { id, note, author: "Minh", at: now() }),
+  )
+}
+
+export async function setDecisionStage(
+  id: string,
+  stage: DecisionStage,
+): Promise<Decision> {
+  return repo().transaction((state) =>
+    setDecisionStageTx(state, { id, stage, at: now() }),
+  )
+}
+
+export interface OfficerOption {
+  id: string
+  name: string
+  roleTitle: string
+}
+
+/** Officer choices for the Delegate flow (excludes the Director). */
+export async function listOfficerOptions(): Promise<OfficerOption[]> {
+  const state = await repo().load()
+  return allOfficerSummaries(state)
+    .filter((s) => s.role.title !== "Product Director")
+    .map((s) => ({
+      id: s.officerAssignment.id,
+      name: s.person.name,
+      roleTitle: s.role.title,
+    }))
 }
 
 export interface WorkBoard {

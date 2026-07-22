@@ -251,6 +251,124 @@ export const DECISION_ACTION_RESULT: Record<DecisionAction, DecisionStatus> = {
   defer: DecisionStatus.Deferred,
 }
 
+/** Confidence in a commitment or recommendation, deterministic — no AI scoring. */
+export const ConfidenceLevel = {
+  High: "high",
+  Medium: "medium",
+  Low: "low",
+} as const
+export type ConfidenceLevel =
+  (typeof ConfidenceLevel)[keyof typeof ConfidenceLevel]
+
+export const ConfidenceLevelLabel: Record<ConfidenceLevel, string> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+}
+
+/** Numeric weight used to average confidence across commitments (3 = high). */
+export const CONFIDENCE_WEIGHT: Record<ConfidenceLevel, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+}
+
+/**
+ * Commitment lifecycle. A Commitment is a promise by an officer to deliver an
+ * outcome — not a task. Draft → Committed → In progress → (Blocked ⇄) →
+ * Completed → Verified.
+ */
+export const CommitmentStatus = {
+  Draft: "draft",
+  Committed: "committed",
+  InProgress: "in-progress",
+  Blocked: "blocked",
+  Completed: "completed",
+  Verified: "verified",
+} as const
+export type CommitmentStatus =
+  (typeof CommitmentStatus)[keyof typeof CommitmentStatus]
+
+export const COMMITMENT_STATUS_ORDER: CommitmentStatus[] = [
+  CommitmentStatus.Draft,
+  CommitmentStatus.Committed,
+  CommitmentStatus.InProgress,
+  CommitmentStatus.Blocked,
+  CommitmentStatus.Completed,
+  CommitmentStatus.Verified,
+]
+
+export const CommitmentStatusLabel: Record<CommitmentStatus, string> = {
+  draft: "Draft",
+  committed: "Committed",
+  "in-progress": "In progress",
+  blocked: "Blocked",
+  completed: "Completed",
+  verified: "Verified",
+}
+
+/** Statuses that count as an open, active promise. */
+export const ACTIVE_COMMITMENT_STATUSES: CommitmentStatus[] = [
+  CommitmentStatus.Committed,
+  CommitmentStatus.InProgress,
+  CommitmentStatus.Blocked,
+]
+
+/**
+ * Legal lifecycle transitions. Blocked is a detour from In progress; Verified
+ * is terminal. Anything not listed is rejected by the transition layer.
+ */
+export const COMMITMENT_TRANSITIONS: Record<CommitmentStatus, CommitmentStatus[]> = {
+  draft: [CommitmentStatus.Committed],
+  committed: [CommitmentStatus.InProgress, CommitmentStatus.Blocked],
+  "in-progress": [CommitmentStatus.Blocked, CommitmentStatus.Completed],
+  blocked: [CommitmentStatus.InProgress, CommitmentStatus.Completed],
+  completed: [CommitmentStatus.Verified],
+  verified: [],
+}
+
+/**
+ * Decision workflow stage — the decision's position in its lifecycle, distinct
+ * from `status`, which records how the Director resolved it. Draft →
+ * Needs review → Ready → Approved → Executed → Verified.
+ */
+export const DecisionStage = {
+  Draft: "draft",
+  NeedsReview: "needs-review",
+  Ready: "ready",
+  Approved: "approved",
+  Executed: "executed",
+  Verified: "verified",
+} as const
+export type DecisionStage = (typeof DecisionStage)[keyof typeof DecisionStage]
+
+export const DECISION_STAGE_ORDER: DecisionStage[] = [
+  DecisionStage.Draft,
+  DecisionStage.NeedsReview,
+  DecisionStage.Ready,
+  DecisionStage.Approved,
+  DecisionStage.Executed,
+  DecisionStage.Verified,
+]
+
+export const DecisionStageLabel: Record<DecisionStage, string> = {
+  draft: "Draft",
+  "needs-review": "Needs review",
+  ready: "Ready",
+  approved: "Approved",
+  executed: "Executed",
+  verified: "Verified",
+}
+
+export const DECISION_STAGE_TRANSITIONS: Record<DecisionStage, DecisionStage[]> = {
+  draft: [DecisionStage.NeedsReview],
+  "needs-review": [DecisionStage.Ready],
+  ready: [DecisionStage.Approved],
+  approved: [DecisionStage.Executed],
+  executed: [DecisionStage.Verified],
+  verified: [],
+}
+
 export const ActivityEventType = {
   AssignmentCreated: "assignment-created",
   AssignmentDelegated: "assignment-delegated",
@@ -264,6 +382,11 @@ export const ActivityEventType = {
   OfficerBlocked: "officer-blocked",
   OfficerUnblocked: "officer-unblocked",
   ConstitutionalDecision: "constitutional-decision",
+  CommitmentCreated: "commitment-created",
+  CommitmentCompleted: "commitment-completed",
+  CommitmentVerified: "commitment-verified",
+  CommitmentBlocked: "commitment-blocked",
+  CommitmentUnblocked: "commitment-unblocked",
 } as const
 export type ActivityEventType =
   (typeof ActivityEventType)[keyof typeof ActivityEventType]
@@ -281,6 +404,11 @@ export const ActivityEventTypeLabel: Record<ActivityEventType, string> = {
   "officer-blocked": "Officer blocked",
   "officer-unblocked": "Officer unblocked",
   "constitutional-decision": "Constitutional decision recorded",
+  "commitment-created": "Commitment created",
+  "commitment-completed": "Commitment completed",
+  "commitment-verified": "Commitment verified",
+  "commitment-blocked": "Commitment blocked",
+  "commitment-unblocked": "Commitment unblocked",
 }
 
 export const RelatedEntityType = {
@@ -291,6 +419,7 @@ export const RelatedEntityType = {
   WorkAssignment: "work-assignment",
   Deliverable: "deliverable",
   Decision: "decision",
+  Commitment: "commitment",
 } as const
 export type RelatedEntityType =
   (typeof RelatedEntityType)[keyof typeof RelatedEntityType]

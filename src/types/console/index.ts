@@ -13,7 +13,10 @@
 
 import type {
   ActivityEventType,
+  CommitmentStatus,
+  ConfidenceLevel,
   DecisionAction,
+  DecisionStage,
   DecisionStatus,
   DecisionType,
   DeliverableType,
@@ -155,20 +158,69 @@ export interface DecisionAlternative {
   description: string
 }
 
+export interface CommitmentNote {
+  at: IsoDateTime
+  author: string
+  note: string
+}
+
+/**
+ * A Commitment is not a task. It is a promise by an officer to deliver an
+ * outcome. Every commitment always has an owner. Lifecycle:
+ * Draft → Committed → In progress → (Blocked ⇄) → Completed → Verified.
+ */
+export interface Commitment {
+  id: string
+  title: string
+  description: string
+  /** The officer who owns the promise — required, always. */
+  ownerOfficerAssignmentId: string
+  /** Who asked for it (officer assignment id, usually the Director's). */
+  requestedById: string
+  dueDate: IsoDateTime | null
+  /** The outcome being promised, in plain language. */
+  outcome: string
+  successCriteria: string[]
+  confidence: ConfidenceLevel
+  status: CommitmentStatus
+  /** Ids of commitments this one depends on. */
+  dependencyIds: string[]
+  linkedDecisionIds: string[]
+  notes: CommitmentNote[]
+  /** Reason while status is `blocked`. */
+  blockedReason: string | null
+  createdAt: IsoDateTime
+  updatedAt: IsoDateTime
+  completedAt: IsoDateTime | null
+  verifiedAt: IsoDateTime | null
+  meta?: KnowledgeMetadata
+}
+
 export interface Decision {
   id: string
   title: string
   type: DecisionType
   priority: Priority
+  /** One-paragraph executive summary of the decision (Milestone 2). */
+  executiveSummary: string
   context: string
   whyItMatters: string
   recommendation: string
   alternatives: DecisionAlternative[]
+  /** Risks of deciding (or not deciding) — plain statements. */
+  risks: string[]
   expectedImpact: string
   estimatedDecisionMinutes: number
   requestingOfficerAssignmentId: string
+  /** Who owns driving this decision to resolution (officer assignment id). */
+  decisionOwnerId: string
+  dueDate: IsoDateTime | null
   affectedAssignmentIds: string[]
+  linkedCommitmentIds: string[]
   supportingEvidence: EvidenceLink[]
+  /** Workflow position: draft → needs-review → ready → approved → executed → verified. */
+  stage: DecisionStage
+  /** How the Director resolved it (approve/reject/…); waiting until resolved. */
   status: DecisionStatus
   resolution: DecisionAction | null
   rationale: string | null
@@ -210,6 +262,7 @@ export interface ConsoleState {
   roles: Role[]
   officerAssignments: OfficerAssignment[]
   workAssignments: WorkAssignment[]
+  commitments: Commitment[]
   deliverables: Deliverable[]
   decisions: Decision[]
   activity: ActivityEvent[]

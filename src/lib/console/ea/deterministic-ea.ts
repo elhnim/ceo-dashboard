@@ -139,11 +139,25 @@ function attentionReply(state: ConsoleState): string {
 
 function blockedReply(state: ConsoleState): string {
   const blocked = blockedAssignments(state)
-  if (blocked.length === 0)
-    return "No work is blocked. Everything in flight has a clear path."
-  const lines = [`**${blocked.length} blocked assignment${blocked.length > 1 ? "s" : ""}:**`]
-  for (const a of blocked)
-    lines.push(`- ${a.title}${a.blockedReason ? ` — ${a.blockedReason}` : ""}`)
+  const blockedCommitments = state.commitments.filter(
+    (c) => c.status === "blocked",
+  )
+  if (blocked.length === 0 && blockedCommitments.length === 0)
+    return "Nothing is blocked. Everything in flight has a clear path."
+  const lines: string[] = []
+  if (blockedCommitments.length > 0) {
+    lines.push(
+      `**${blockedCommitments.length} blocked commitment${blockedCommitments.length > 1 ? "s" : ""}:**`,
+    )
+    for (const c of blockedCommitments)
+      lines.push(`- ${c.title}${c.blockedReason ? ` — ${c.blockedReason}` : ""}`)
+  }
+  if (blocked.length > 0) {
+    if (lines.length > 0) lines.push("")
+    lines.push(`**${blocked.length} blocked assignment${blocked.length > 1 ? "s" : ""}:**`)
+    for (const a of blocked)
+      lines.push(`- ${a.title}${a.blockedReason ? ` — ${a.blockedReason}` : ""}`)
+  }
   return lines.join("\n")
 }
 

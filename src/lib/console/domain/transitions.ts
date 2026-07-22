@@ -9,7 +9,12 @@
 
 import {
   ActivityEventType,
+  COMMITMENT_TRANSITIONS,
+  CommitmentStatus,
+  ConfidenceLevel,
   DECISION_ACTION_RESULT,
+  DECISION_STAGE_TRANSITIONS,
+  DecisionStage,
   DecisionStatus,
   DecisionType,
   Priority,
@@ -18,6 +23,7 @@ import {
   WorkAssignmentStatus,
 } from "./enums"
 import {
+  validateCommitment,
   validateDecision,
   validateDeliverable,
   validateWorkAssignment,
@@ -25,6 +31,7 @@ import {
 } from "./validation"
 import type {
   ActivityEvent,
+  Commitment,
   ConsoleState,
   Decision,
   Deliverable,
@@ -65,9 +72,16 @@ export function resolveDecisionTx(
   const decision = state.decisions.find((d) => d.id === input.id)
   if (!decision) throw new NotFoundError("Decision", input.id)
 
+  const resolvedStatus = DECISION_ACTION_RESULT[input.action]
   const resolved: Decision = {
     ...decision,
-    status: DECISION_ACTION_RESULT[input.action],
+    status: resolvedStatus,
+    // Approval advances the workflow stage; other resolutions leave it as-is.
+    stage:
+      resolvedStatus === DecisionStatus.Approved ||
+      resolvedStatus === DecisionStatus.Modified
+        ? DecisionStage.Approved
+        : decision.stage,
     resolution: input.action,
     rationale: input.rationale ?? null,
     decidedAt: input.at,
@@ -97,6 +111,209 @@ export function resolveDecisionTx(
   })
 
   return { state: next, result: resolved }
+}
+
+// --- Commitments -------------------------------------------------------------
+
+export interface NewCommitmentInput {
+  title: string
+  outcome: string
+  description?: string
+  ownerOfficerAssignmentId: string
+  requestedById?: string
+  dueDate?: string | null
+  successCriteria?: string[]
+  confidence?: ConfidenceLevel
+  dependencyIds?: string[]
+  linkedDecisionIds?: string[]
+  /** Create as a draft instead of immediately committed. */
+  asDraft?: boolean
+}
+
+export function createCommitmentTx(
+  state: ConsoleState,
+  input: { data: NewCommitmentInput; id: string; at: string },
+): TxResult<Commitment> {
+  const issues = validateCommitment(input.data)
+  if (issues.length > 0) throw new ValidationError(issues)
+  if (
+    !state.officerAssignments.some(
+      (o) => o.id === input.data.ownerOfficerAssignmentId,
+    )
+  )
+    throw new NotFoundError("OfficerAssignment", input.data.ownerOfficerAssignmentId)
+
+  const commitment: Commitment = {
+    id: input.id,
+    title: input.data.title,
+    description: input.data.description ?? "",
+    ownerOfficerAssignmentId: input.data.ownerOfficerAssignmentId,
+    requestedById: input.data.requestedById ?? "oa-minh",
+    dueDate: input.data.dueDate ?? null,
+    outcome: input.data.outcome,
+    successCriteria: input.data.successCriteria ?? [],
+    confidence: input.data.confidence ?? ConfidenceLevel.Medium,
+    status: input.data.asDraft ? CommitmentStatus.Draft : CommitmentStatus.Committed,
+    dependencyIds: input.data.dependencyIds ?? [],
+    linkedDecisionIds: input.data.linkedDecisionIds ?? [],
+    notes: [],
+    blockedReason: null,
+    createdAt: input.at,
+    updatedAt: input.at,
+    completedAt: null,
+    verifiedAt: null,
+  }
+
+  let next: ConsoleState = {
+    ...state,
+    commitments: [...state.commitments, commitment],
+  }
+  next = withActivity(next, {
+    eventType: ActivityEventType.CommitmentCreated,
+    title: `Commitment created: ${commitment.title}`,
+    description: commitment.outcome,
+    actorId: commitment.requestedById,
+    relatedEntityType: RelatedEntityType.Commitment,
+    relatedEntityId: commitment.id,
+    occurredAt: input.at,
+  })
+  return { state: next, result: commitment }
+}
+
+export function setCommitmentStatusTx(
+  state: ConsoleState,
+  input: {
+    id: string
+    status: Commitment["status"]
+    reason?: string
+    note?: string
+    author?: string
+    at: string
+  },
+): TxResult<Commitment> {
+  const existing = state.commitments.find((c) => c.id === input.id)
+  if (!existing) throw new NotFoundError("Commitment", input.id)
+
+  const allowed = COMMITMENT_TRANSITIONS[existing.status]
+  if (!allowed.includes(input.status))
+    throw new ValidationError([
+      `cannot move a ${existing.status} commitment to ${input.status}; allowed: ${allowed.join(", ") || "none — verified is terminal"}`,
+    ])
+  if (input.status === CommitmentStatus.Blocked && !input.reason?.trim())
+    throw new ValidationError(["a reason is required to block a commitment"])
+
+  const updated: Commitment = {
+    ...existing,
+    status: input.status,
+    blockedReason:
+      input.status === CommitmentStatus.Blocked ? input.reason!.trim() : null,
+    completedAt:
+      input.status === CommitmentStatus.Completed
+        ? input.at
+        : existing.completedAt,
+    verifiedAt:
+      input.status === CommitmentStatus.Verified ? input.at : existing.verifiedAt,
+    notes: input.note
+      ? [
+          ...existing.notes,
+          { at: input.at, author: input.author ?? "Minh", note: input.note },
+        ]
+      : existing.notes,
+    updatedAt: input.at,
+  }
+
+  let next: ConsoleState = {
+    ...state,
+    commitments: state.commitments.map((c) => (c.id === updated.id ? updated : c)),
+  }
+
+  const EVENT: Partial<Record<Commitment["status"], { type: ActivityEventType; title: string }>> = {
+    completed: {
+      type: ActivityEventType.CommitmentCompleted,
+      title: `Commitment completed: ${existing.title}`,
+    },
+    verified: {
+      type: ActivityEventType.CommitmentVerified,
+      title: `Commitment verified: ${existing.title}`,
+    },
+    blocked: {
+      type: ActivityEventType.CommitmentBlocked,
+      title: `Commitment blocked: ${existing.title}`,
+    },
+  }
+  const unblocking =
+    existing.status === CommitmentStatus.Blocked &&
+    input.status === CommitmentStatus.InProgress
+  const event = unblocking
+    ? { type: ActivityEventType.CommitmentUnblocked, title: `Commitment unblocked: ${existing.title}` }
+    : EVENT[input.status]
+
+  if (event) {
+    next = withActivity(next, {
+      eventType: event.type,
+      title: event.title,
+      description: input.reason ?? input.note ?? "",
+      actorId: existing.ownerOfficerAssignmentId,
+      relatedEntityType: RelatedEntityType.Commitment,
+      relatedEntityId: existing.id,
+      occurredAt: input.at,
+    })
+  }
+
+  return { state: next, result: updated }
+}
+
+export function addCommitmentNoteTx(
+  state: ConsoleState,
+  input: { id: string; note: string; author: string; at: string },
+): TxResult<Commitment> {
+  const existing = state.commitments.find((c) => c.id === input.id)
+  if (!existing) throw new NotFoundError("Commitment", input.id)
+  if (!input.note.trim()) throw new ValidationError(["note must not be empty"])
+  const updated: Commitment = {
+    ...existing,
+    notes: [...existing.notes, { at: input.at, author: input.author, note: input.note.trim() }],
+    updatedAt: input.at,
+  }
+  return {
+    state: {
+      ...state,
+      commitments: state.commitments.map((c) => (c.id === updated.id ? updated : c)),
+    },
+    result: updated,
+  }
+}
+
+// --- Decision stage -----------------------------------------------------------
+
+export function setDecisionStageTx(
+  state: ConsoleState,
+  input: { id: string; stage: Decision["stage"]; at: string },
+): TxResult<Decision> {
+  const decision = state.decisions.find((d) => d.id === input.id)
+  if (!decision) throw new NotFoundError("Decision", input.id)
+
+  const allowed = DECISION_STAGE_TRANSITIONS[decision.stage]
+  if (!allowed.includes(input.stage))
+    throw new ValidationError([
+      `cannot move a ${decision.stage} decision to ${input.stage}; allowed: ${allowed.join(", ") || "none — verified is terminal"}`,
+    ])
+
+  const updated: Decision = { ...decision, stage: input.stage }
+  let next: ConsoleState = {
+    ...state,
+    decisions: state.decisions.map((d) => (d.id === updated.id ? updated : d)),
+  }
+  next = withActivity(next, {
+    eventType: ActivityEventType.DecisionResolved,
+    title: `Decision ${input.stage}: ${decision.title}`,
+    description: `Moved from ${decision.stage} to ${input.stage}.`,
+    actorId: decision.decisionOwnerId,
+    relatedEntityType: RelatedEntityType.Decision,
+    relatedEntityId: decision.id,
+    occurredAt: input.at,
+  })
+  return { state: next, result: updated }
 }
 
 // --- Deliverables -----------------------------------------------------------

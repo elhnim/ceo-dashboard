@@ -33,12 +33,17 @@ npm run build   # production build
 
 | Screen | Route | Purpose |
 | --- | --- | --- |
-| **Executive Brief** | `/` | The primary workspace: **Today's Priorities** (the 3–5 items worth your next 30 minutes, ranked), organization health and position, deliverables ready for review, officer updates, and work to continue. |
-| **Organization** | `/organization` | Your officers and their charters — mission, authority, boundaries, commitments, blockers, activity. Includes **Assign work**. |
-| **Work** | `/work` | The organization's commitments grouped by status, with per-assignment detail and **deliverable review** (Approve / Request revision / Reject). |
-| **Decisions** | `/decisions` | Prioritized decision queue. Approve / Reject / Modify / Discuss / Delegate / Defer, with a recorded rationale. |
-| **Knowledge** | `/knowledge` | The organizational record today; becomes the Organizational Mind in future milestones. |
-| **Executive Assistant** | `/ea` | A workspace: conversation with Vera plus panels for recommendations, research, drafts, and pending decisions. Deterministic for the MVP; swappable for a real model via `ConversationProvider`. |
+| **Executive Brief** | `/` | The primary workspace: **Today's Priorities**, **Focus Today** (highest-value commitments), **Waiting For Me**, Green/Yellow/Red health, **Emerging Risks**, **Momentum**, position metrics, deliverables, officer updates, and the latest activity. |
+| **Organization** | `/organization` | Your officers: objectives, active/completed/overdue **commitments**, workload, average confidence, and a delivery score from observable data — plus charter, work, and blockers. |
+| **Commitments** | `/commitments` | Owned promises to deliver outcomes, with success criteria and a full lifecycle (Draft → Committed → In progress → Blocked ⇄ → Completed → **Verified** by you). |
+| **Work** | `/work` | Execution detail: assignments grouped by status, with **deliverable review** (Approve / Request revision / Reject). |
+| **Decisions** | `/decisions` | The decision workflow: a prioritized queue with executive summary, risks, owner, and due date — resolve it, then track it through **execution to verification**. |
+| **Knowledge** | `/knowledge` | The filterable organization timeline today; becomes the Organizational Mind in future milestones. |
+| **Executive Assistant** | `/ea` | A workspace: conversation with Vera plus live Pending Decisions and Active Commitments, and sample Recommendations/Research/Drafts panels. |
+
+**Delegate from anywhere** — the sidebar (and mobile header) button opens a
+dialog: choose officer → define outcome → success criteria → due date → a
+commitment is created without leaving the page.
 
 Old routes (`/officers`, `/activity`) permanently redirect to their new homes.
 
@@ -76,6 +81,7 @@ See the ADRs for the reasoning:
 - [0002 — Persistence & integration boundaries](docs/adr/0002-persistence-and-integrations.md)
 - [0003 — Testing approach](docs/adr/0003-testing.md)
 - [0004 — Engineering model vs. Organizational Twin ontology](docs/adr/0004-canonical-model-boundary.md)
+- [0005 — Commitment engine & decision workflow](docs/adr/0005-commitment-engine.md)
 
 Full documentation and the implementation log live in [`docs/`](docs/README.md).
 

@@ -2,6 +2,39 @@
 
 Concise record of what was built and the decisions taken along the way.
 
+## 2026-07-22 — Milestone 2: Executive Coordination Engine
+
+Founder Console became an executive operating system: decide, delegate, track
+commitments, and coordinate execution in one place. No AI in this milestone.
+
+1. **Commitment engine.** `Commitment` is a first-class domain object — an
+   officer's promise to deliver an outcome, with success criteria, confidence,
+   a required owner, dependencies, linked decisions, and notes. Whitelisted
+   lifecycle (Draft → Committed → In progress → Blocked ⇄ → Completed →
+   Verified); pages for the board and detail; ADR 0005.
+2. **Decision workflow.** Decisions gained a stage lifecycle (draft →
+   needs-review → ready → approved → executed → verified) orthogonal to their
+   resolution status, plus executive summary, risks, owner, due date, and
+   linked commitments. Approval auto-advances the stage; execution and
+   verification are tracked in the queue.
+3. **Officer management.** Officer pages show objectives, commitments by
+   state, current workload, average confidence, and a delivery score computed
+   only from observable data (on-time share of concluded commitments).
+4. **Executive Brief 2.0.** Added Focus Today, Waiting For Me, Green/Yellow/
+   Red health, Emerging Risks (overdue commitments, blocked work, overloaded
+   officers, delayed decisions), and Momentum — keeping all prior content.
+5. **Delegation from anywhere.** A global Delegate action (sidebar + mobile
+   header) creates a commitment via one dialog — no page switching.
+6. **Organization timeline.** The activity feed became a filterable timeline
+   (commitments / decisions / reviews / work / governance).
+7. **Executive workspace.** Added a live Active Commitments panel.
+8. **Compatibility.** A load-time migration fills post-M1.1 fields in older
+   data files; old URLs and API routes unchanged; zero new dependencies.
+
+Verified with 76 tests (23 new), clean typecheck/lint/build, and an end-to-end
+runtime smoke test (delegation → lifecycle → verification, illegal transitions
+rejected).
+
 ## 2026-07-21 — Milestone 1.1: Executive Office revisions
 
 A refinement pass from Executive Office review; no redesign, no scope

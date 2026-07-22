@@ -3,12 +3,22 @@ import { notFound } from "next/navigation"
 import { ActivityList } from "@/components/console/activity-list"
 import { AssignmentRow } from "@/components/console/assignment-row"
 import { AssignWorkPanel } from "@/components/console/assign-work-panel"
+import { CommitmentRow } from "@/components/console/commitment-row"
+import { DelegateButton } from "@/components/console/delegate-dialog"
 import { DeliverableRow } from "@/components/console/deliverable-row"
-import { EmptyState, InfoRow, PageHeader, Section } from "@/components/console/primitives"
 import {
+  EmptyState,
+  InfoRow,
+  MetricTile,
+  PageHeader,
+  Section,
+} from "@/components/console/primitives"
+import {
+  ConfidenceLevelLabel,
   DecisionStatus,
   RoleStatusLabel,
 } from "@/lib/console/domain/enums"
+import { OVERLOAD_THRESHOLD, isOverdue } from "@/lib/console/domain/logic"
 import { getOfficerDetail } from "@/lib/console/services/console-service"
 
 export const dynamic = "force-dynamic"
@@ -22,10 +32,25 @@ export default async function OfficerDetailPage({
   const detail = await getOfficerDetail(id)
   if (!detail) notFound()
 
-  const { summary, deliverables, decisions, activity } = detail
+  const {
+    summary,
+    commitments,
+    workload,
+    averageConfidence,
+    deliveryScore,
+    deliverables,
+    decisions,
+    activity,
+  } = detail
   const { person, role, reportsToRole } = summary
   const openDecisions = decisions.filter((d) => d.status === DecisionStatus.Waiting)
   const blocked = summary.currentAssignments.filter((a) => a.status === "blocked")
+  const now = new Date().toISOString()
+
+  const objectives = [
+    ...commitments.active.map((c) => c.outcome),
+    ...summary.currentAssignments.map((a) => a.objective),
+  ].filter((o, i, all) => all.indexOf(o) === i)
 
   return (
     <>
@@ -33,7 +58,107 @@ export default async function OfficerDetailPage({
         eyebrow={RoleStatusLabel[role.status]}
         title={person.name}
         description={role.mission}
+        actions={<DelegateButton defaultOfficerId={id} />}
       />
+
+      <Section title="At a glance" description="Observable data only — no AI scoring.">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MetricTile
+            label={`Current workload${workload >= OVERLOAD_THRESHOLD ? " — heavy" : ""}`}
+            value={workload}
+            tone={workload >= OVERLOAD_THRESHOLD ? "warn" : "default"}
+          />
+          <MetricTile
+            label="Average confidence"
+            value={
+              averageConfidence
+                ? `${ConfidenceLevelLabel[averageConfidence.level]}`
+                : "—"
+            }
+          />
+          <MetricTile
+            label={
+              deliveryScore
+                ? `Delivery score (${deliveryScore.onTime}/${deliveryScore.concluded} on time)`
+                : "Delivery score"
+            }
+            value={deliveryScore ? `${deliveryScore.score}%` : "—"}
+            tone={
+              deliveryScore
+                ? deliveryScore.score >= 80
+                  ? "good"
+                  : deliveryScore.score >= 50
+                    ? "warn"
+                    : "danger"
+                : "default"
+            }
+          />
+          <MetricTile
+            label="Blocked commitments"
+            value={commitments.blocked.length}
+            tone={commitments.blocked.length > 0 ? "danger" : "default"}
+          />
+        </div>
+        {!deliveryScore ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Delivery score appears after the first concluded commitment.
+          </p>
+        ) : null}
+      </Section>
+
+      <Section title="Objectives" description="The outcomes this officer is driving.">
+        {objectives.length === 0 ? (
+          <EmptyState title="No active objectives" />
+        ) : (
+          <ul className="space-y-2">
+            {objectives.map((o) => (
+              <li key={o} className="flex items-start gap-2 text-sm leading-6">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-muted-foreground/60" />
+                {o}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title={`Active commitments (${commitments.active.length})`}>
+        {commitments.active.length === 0 ? (
+          <EmptyState title="No active commitments" />
+        ) : (
+          <div className="space-y-3">
+            {commitments.active.map((c) => (
+              <CommitmentRow
+                key={c.id}
+                commitment={c}
+                ownerName={person.name}
+                overdue={isOverdue(c, now)}
+              />
+            ))}
+          </div>
+        )}
+      </Section>
+
+      {commitments.overdue.length > 0 ? (
+        <Section title={`Overdue (${commitments.overdue.length})`}>
+          <div className="space-y-3">
+            {commitments.overdue.map((c) => (
+              <CommitmentRow key={c.id} commitment={c} ownerName={person.name} overdue />
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      <Section title={`Completed commitments (${commitments.completed.length})`}>
+        {commitments.completed.length === 0 ? (
+          <EmptyState title="Nothing concluded yet" />
+        ) : (
+          <div className="space-y-3">
+            {commitments.completed.map((c) => (
+              <CommitmentRow key={c.id} commitment={c} ownerName={person.name} />
+            ))}
+          </div>
+        )}
+      </Section>
 
       <Section title="Charter">
         <div className="rounded-xl border border-border/60 bg-card px-4 py-2 sm:px-5">
@@ -93,10 +218,16 @@ export default async function OfficerDetailPage({
       </Section>
 
       <Section title="Questions & blockers">
-        {openDecisions.length === 0 && blocked.length === 0 ? (
+        {openDecisions.length === 0 && blocked.length === 0 && commitments.blocked.length === 0 ? (
           <EmptyState title="Nothing outstanding" description="No open questions or blockers." />
         ) : (
           <div className="space-y-2">
+            {commitments.blocked.map((c) => (
+              <div key={c.id} className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3">
+                <p className="text-sm font-medium">{c.title}</p>
+                <p className="text-sm text-muted-foreground">{c.blockedReason}</p>
+              </div>
+            ))}
             {blocked.map((a) => (
               <div key={a.id} className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3">
                 <p className="text-sm font-medium">{a.title}</p>
@@ -117,19 +248,11 @@ export default async function OfficerDetailPage({
         <ActivityList events={activity} />
       </Section>
 
-      <Section title="Performance">
-        <div className="rounded-xl border border-dashed border-border/70 bg-card/30 px-5 py-6 text-sm text-muted-foreground">
-          Performance signals (throughput, review pass-rate, decision latency) will
-          appear here once the organization has enough history. Placeholder for a
-          future capability.
-        </div>
-      </Section>
-
       <Section title="Context & sources">
         <div className="rounded-xl border border-dashed border-border/70 bg-card/30 px-5 py-6 text-sm text-muted-foreground">
           Links to supporting sessions and source material will surface here when a
           real agent backend is connected. You should not need them for day-to-day
-          supervision.
+          coordination.
         </div>
       </Section>
     </>

@@ -12,6 +12,9 @@
  */
 
 import {
+  CommitmentStatus,
+  ConfidenceLevel,
+  DecisionStage,
   DecisionStatus,
   DecisionType,
   DeliverableType,
@@ -28,6 +31,7 @@ import {
   ActivityEventType,
 } from "./enums"
 import type {
+  Commitment,
   ConsoleState,
   Decision,
   Deliverable,
@@ -96,6 +100,34 @@ export function validateDecision(input: Partial<Decision>): string[] {
       input.estimatedDecisionMinutes < 0)
   )
     issues.push("estimatedDecisionMinutes must be a non-negative number")
+  return issues
+}
+
+/**
+ * Validate a partial Commitment payload (create/update). A commitment must
+ * always have an owner — that invariant is enforced here and in transitions.
+ */
+export function validateCommitment(input: Partial<Commitment>): string[] {
+  const issues: string[] = []
+  if (!isNonEmptyString(input.title)) issues.push("title is required")
+  if (!isNonEmptyString(input.outcome)) issues.push("outcome is required")
+  if (!isNonEmptyString(input.ownerOfficerAssignmentId))
+    issues.push("ownerOfficerAssignmentId is required — every commitment has an owner")
+  if (
+    input.status !== undefined &&
+    !isOneOf(input.status, enumValues(CommitmentStatus))
+  )
+    issues.push("status is not a valid commitment status")
+  if (
+    input.confidence !== undefined &&
+    !isOneOf(input.confidence, enumValues(ConfidenceLevel))
+  )
+    issues.push(`confidence must be one of ${enumValues(ConfidenceLevel).join(", ")}`)
+  if (
+    input.status === CommitmentStatus.Blocked &&
+    !isNonEmptyString(input.blockedReason)
+  )
+    issues.push("blockedReason is required when status is blocked")
   return issues
 }
 
@@ -185,16 +217,45 @@ export function validateConsoleState(state: ConsoleState): string[] {
       issues.push(`deliverable ${d.id}: invalid reviewStatus`)
   }
 
+  const commitmentIds = new Set(state.commitments.map((c) => c.id))
+
   for (const dec of state.decisions) {
     if (!officerIds.has(dec.requestingOfficerAssignmentId))
       issues.push(`decision ${dec.id}: requesting officer missing`)
+    if (!officerIds.has(dec.decisionOwnerId))
+      issues.push(`decision ${dec.id}: decisionOwnerId ${dec.decisionOwnerId} missing`)
     for (const a of dec.affectedAssignmentIds)
       if (!assignmentIds.has(a))
         issues.push(`decision ${dec.id}: affected assignment ${a} missing`)
+    for (const c of dec.linkedCommitmentIds)
+      if (!commitmentIds.has(c))
+        issues.push(`decision ${dec.id}: linked commitment ${c} missing`)
     if (!isOneOf(dec.type, enumValues(DecisionType)))
       issues.push(`decision ${dec.id}: invalid type`)
     if (!isOneOf(dec.status, enumValues(DecisionStatus)))
       issues.push(`decision ${dec.id}: invalid status`)
+    if (!isOneOf(dec.stage, enumValues(DecisionStage)))
+      issues.push(`decision ${dec.id}: invalid stage`)
+  }
+
+  const decisionIds = new Set(state.decisions.map((d) => d.id))
+  for (const c of state.commitments) {
+    if (!officerIds.has(c.ownerOfficerAssignmentId))
+      issues.push(`commitment ${c.id}: owner ${c.ownerOfficerAssignmentId} missing`)
+    if (!officerIds.has(c.requestedById))
+      issues.push(`commitment ${c.id}: requestedById ${c.requestedById} missing`)
+    for (const dep of c.dependencyIds)
+      if (!commitmentIds.has(dep))
+        issues.push(`commitment ${c.id}: dependency ${dep} missing`)
+    for (const d of c.linkedDecisionIds)
+      if (!decisionIds.has(d))
+        issues.push(`commitment ${c.id}: linked decision ${d} missing`)
+    if (!isOneOf(c.status, enumValues(CommitmentStatus)))
+      issues.push(`commitment ${c.id}: invalid status`)
+    if (!isOneOf(c.confidence, enumValues(ConfidenceLevel)))
+      issues.push(`commitment ${c.id}: invalid confidence`)
+    if (c.status === CommitmentStatus.Blocked && !c.blockedReason)
+      issues.push(`commitment ${c.id}: blocked without blockedReason`)
   }
 
   for (const e of state.activity) {

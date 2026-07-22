@@ -20,6 +20,7 @@ import os from "node:os"
 import path from "node:path"
 
 import { createSeedState } from "./seed"
+import { migrateState } from "./migrate"
 import type { ConsoleRepository } from "./repository"
 import type { ConsoleState } from "@/types/console"
 
@@ -50,7 +51,8 @@ export class LocalJsonRepository implements ConsoleRepository {
   async load(): Promise<ConsoleState> {
     try {
       const raw = await readFile(DATA_FILE, "utf8")
-      return JSON.parse(raw) as ConsoleState
+      // Fill any fields introduced after this file was written (idempotent).
+      return migrateState(JSON.parse(raw))
     } catch {
       const seed = createSeedState()
       await this.save(seed)

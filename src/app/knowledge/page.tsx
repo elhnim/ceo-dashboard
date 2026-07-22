@@ -1,7 +1,7 @@
 import { BrainIcon } from "lucide-react"
 
-import { ActivityList } from "@/components/console/activity-list"
 import { PageHeader, Section } from "@/components/console/primitives"
+import { Timeline } from "@/components/console/timeline"
 import { getActivity } from "@/lib/console/services/console-service"
 
 export const dynamic = "force-dynamic"
@@ -30,10 +30,10 @@ export default async function KnowledgePage() {
       </div>
 
       <Section
-        title="Organizational record"
-        description="The chronological memory of the organization, newest first."
+        title="Organization timeline"
+        description="Commitments, decisions, reviews, and delivered milestones — chronological, newest first."
       >
-        <ActivityList events={events} />
+        <Timeline events={events} />
       </Section>
     </>
   )

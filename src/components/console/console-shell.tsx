@@ -4,23 +4,23 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  ActivityIcon,
+  BookOpenIcon,
   BriefcaseIcon,
   GaugeIcon,
-  HomeIcon,
   MessageSquareIcon,
+  SunriseIcon,
   UsersIcon,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
 const NAV = [
-  { href: "/", label: "Home", icon: HomeIcon },
-  { href: "/decisions", label: "Decisions", icon: GaugeIcon },
-  { href: "/officers", label: "Officers", icon: UsersIcon },
-  { href: "/work", label: "Work", icon: BriefcaseIcon },
-  { href: "/activity", label: "Activity", icon: ActivityIcon },
-  { href: "/ea", label: "EA", icon: MessageSquareIcon },
+  { href: "/", label: "Executive Brief", short: "Brief", icon: SunriseIcon },
+  { href: "/organization", label: "Organization", short: "Org", icon: UsersIcon },
+  { href: "/work", label: "Work", short: "Work", icon: BriefcaseIcon },
+  { href: "/decisions", label: "Decisions", short: "Decide", icon: GaugeIcon },
+  { href: "/knowledge", label: "Knowledge", short: "Know", icon: BookOpenIcon },
+  { href: "/ea", label: "Executive Assistant", short: "EA", icon: MessageSquareIcon },
 ] as const
 
 function isActive(pathname: string, href: string) {
@@ -65,8 +65,8 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <p className="px-3 text-xs leading-5 text-muted-foreground">
-          Supervising a persistent AI team. Inspect underlying sessions only when
-          you choose to.
+          Direct your organization: decide, delegate, and review outcomes.
+          Open the machinery only when you choose to.
         </p>
       </aside>
 
@@ -87,7 +87,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom nav */}
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-border/60 bg-background/95 backdrop-blur md:hidden">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, short, icon: Icon }) => {
           const active = isActive(pathname, href)
           return (
             <Link
@@ -99,7 +99,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
               )}
             >
               <Icon className={cn("size-5", active && "text-primary")} />
-              {label}
+              {short}
             </Link>
           )
         })}

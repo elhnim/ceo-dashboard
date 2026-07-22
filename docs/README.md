@@ -11,6 +11,7 @@ in the [root README](../README.md). This folder holds the deeper material.
   - [0001 — Stack & architecture](adr/0001-stack-and-architecture.md)
   - [0002 — Persistence & integration boundaries](adr/0002-persistence-and-integrations.md)
   - [0003 — Testing approach](adr/0003-testing.md)
+  - [0004 — Engineering model vs. Organizational Twin ontology](adr/0004-canonical-model-boundary.md)
 
 ## Quick reference
 

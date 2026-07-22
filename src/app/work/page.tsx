@@ -24,9 +24,9 @@ export default async function WorkPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Assignments"
-        title="Work"
-        description="Every assignment, grouped by status. Blocked and review items are surfaced first so nothing stalls silently."
+        eyebrow="Work"
+        title="The organization's commitments"
+        description="Every assignment and its outcome, grouped by status — blocked and review items surface first so nothing stalls silently."
       />
 
       {state.workAssignments.length === 0 ? (

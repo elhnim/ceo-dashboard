@@ -12,7 +12,7 @@ export function OfficerStatusRow({ summary }: { summary: OfficerSummary }) {
 
   return (
     <Link
-      href={`/officers/${summary.officerAssignment.id}`}
+      href={`/organization/${summary.officerAssignment.id}`}
       className="group flex items-center gap-4 rounded-xl border border-border/60 bg-card px-4 py-3.5 ring-1 ring-foreground/[0.02] transition-colors hover:border-border"
     >
       <span

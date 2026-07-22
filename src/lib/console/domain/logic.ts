@@ -218,6 +218,123 @@ export function activityFeed(state: ConsoleState, limit?: number): ActivityEvent
   return typeof limit === "number" ? sorted.slice(0, limit) : sorted
 }
 
+/**
+ * A ranked item for the Executive Brief's "Today's Priorities" section —
+ * the answer to "if I only have 30 minutes today, what should I focus on?".
+ */
+export interface TodayPriority {
+  /** Id of the underlying decision, deliverable, or assignment. */
+  id: string
+  kind: "decision" | "review" | "blocker"
+  title: string
+  whyItMatters: string
+  estimatedMinutes: number
+  /** How settled the recommended action is, derived deterministically. */
+  confidence: "high" | "medium" | "low"
+  recommendedAction: string
+  href: string
+  priority: Priority
+}
+
+const KIND_RANK: Record<TodayPriority["kind"], number> = {
+  decision: 0,
+  review: 1,
+  blocker: 2,
+}
+
+/**
+ * Derive the 3–5 items the Director should focus on today, ranked by urgency
+ * and impact. Pure and deterministic:
+ *  - waiting decisions (a decision that unblocks work outranks its peers);
+ *  - deliverables awaiting review;
+ *  - blocked work not already covered by a listed decision.
+ * Confidence is high when a clear recommendation/action exists, medium when
+ * judgment is needed, low when the path is genuinely open.
+ */
+export function todaysPriorities(state: ConsoleState, limit = 5): TodayPriority[] {
+  const blocked = blockedAssignments(state)
+  const blockedIds = new Set(blocked.map((a) => a.id))
+  const items: Array<TodayPriority & { score: number }> = []
+
+  for (const d of waitingDecisions(state)) {
+    const unblocks = d.affectedAssignmentIds.filter((id) => blockedIds.has(id))
+    const hasRecommendation = d.recommendation.trim().length > 0
+    items.push({
+      id: d.id,
+      kind: "decision",
+      title: d.title,
+      whyItMatters:
+        unblocks.length > 0
+          ? `${d.whyItMatters} Deciding this unblocks work in progress.`
+          : d.whyItMatters,
+      estimatedMinutes: d.estimatedDecisionMinutes,
+      confidence: hasRecommendation
+        ? "high"
+        : d.alternatives.length > 0
+          ? "medium"
+          : "low",
+      recommendedAction: hasRecommendation
+        ? `Recommended: ${d.recommendation}`
+        : "Review the alternatives and decide.",
+      href: "/decisions",
+      priority: d.priority,
+      score: PRIORITY_RANK[d.priority] - (unblocks.length > 0 ? 0.5 : 0),
+    })
+  }
+
+  const assignmentById = new Map(state.workAssignments.map((a) => [a.id, a]))
+  for (const del of readyDeliverables(state)) {
+    const assignment = assignmentById.get(del.assignmentId)
+    const priority = assignment?.priority ?? Priority.Medium
+    items.push({
+      id: del.id,
+      kind: "review",
+      title: `Review: ${del.title}`,
+      whyItMatters: del.summary,
+      estimatedMinutes: 15,
+      confidence: "high",
+      recommendedAction: "Read the summary, then approve or return for revision.",
+      href: `/work/${del.assignmentId}`,
+      priority,
+      score: PRIORITY_RANK[priority] + 0.25,
+    })
+  }
+
+  // Blocked work whose unblocking decision is already listed is covered above.
+  const listedDecisionAffects = new Set(
+    waitingDecisions(state).flatMap((d) => d.affectedAssignmentIds),
+  )
+  for (const a of blocked) {
+    if (listedDecisionAffects.has(a.id)) continue
+    items.push({
+      id: a.id,
+      kind: "blocker",
+      title: `Unblock: ${a.title}`,
+      whyItMatters: a.blockedReason ?? "This work is stalled.",
+      estimatedMinutes: 10,
+      confidence: "medium",
+      recommendedAction: "Resolve the blocker or redirect the officer.",
+      href: `/work/${a.id}`,
+      priority: a.priority,
+      score: PRIORITY_RANK[a.priority] + 0.1,
+    })
+  }
+
+  items.sort(
+    (a, b) =>
+      a.score - b.score ||
+      KIND_RANK[a.kind] - KIND_RANK[b.kind] ||
+      a.estimatedMinutes - b.estimatedMinutes ||
+      a.title.localeCompare(b.title),
+  )
+
+  return items.slice(0, limit).map((item) => {
+    const { score, ...priority } = item
+    void score
+    return priority
+  })
+}
+
 export interface BriefInput {
   periodStart: string
   periodEnd: string
